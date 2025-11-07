@@ -16,24 +16,27 @@ class TavernCardParser {
 
       // Verify PNG signature
       if (!this.isPNG(dataView)) {
-        throw new Error('File is not a valid PNG');
+        throw new Error("File is not a valid PNG");
       }
 
       // Extract tEXt chunks
       const chunks = this.extractChunks(dataView);
-      const textChunks = chunks.filter(chunk => chunk.type === 'tEXt');
+      const textChunks = chunks.filter((chunk) => chunk.type === "tEXt");
 
       // Look for character data in tEXt chunks
       for (const chunk of textChunks) {
         const { keyword, text } = this.decodeTextChunk(chunk.data);
 
         // V3 format (ccv3) or V2 format (chara)
-        if (keyword === 'ccv3' || keyword === 'chara') {
+        if (keyword === "ccv3" || keyword === "chara") {
           const jsonString = this.base64Decode(text);
           const cardData = JSON.parse(jsonString);
 
           // Normalize to ensure we have the expected structure
-          if (cardData.spec === 'chara_card_v2' || cardData.spec === 'chara_card_v3') {
+          if (
+            cardData.spec === "chara_card_v2" ||
+            cardData.spec === "chara_card_v3"
+          ) {
             return cardData;
           } else if (cardData.data) {
             // Already has data property
@@ -45,8 +48,9 @@ class TavernCardParser {
         }
       }
 
-      throw new Error('No character card data found in PNG. Make sure this is a Tavern character card.');
-
+      throw new Error(
+        "No character card data found in PNG. Make sure this is a Tavern character card."
+      );
     } catch (error) {
       throw new Error(`Failed to parse character card: ${error.message}`);
     }
@@ -57,8 +61,10 @@ class TavernCardParser {
    */
   static isPNG(dataView) {
     // PNG signature: 137 80 78 71 13 10 26 10
-    return dataView.getUint32(0) === 0x89504E47 &&
-           dataView.getUint32(4) === 0x0D0A1A0A;
+    return (
+      dataView.getUint32(0) === 0x89504e47 &&
+      dataView.getUint32(4) === 0x0d0a1a0a
+    );
   }
 
   /**
@@ -92,7 +98,7 @@ class TavernCardParser {
       chunks.push({ type, data, length });
 
       // Stop at IEND chunk
-      if (type === 'IEND') break;
+      if (type === "IEND") break;
     }
 
     return chunks;
@@ -113,7 +119,7 @@ class TavernCardParser {
     }
 
     if (nullIndex === -1) {
-      throw new Error('Invalid tEXt chunk format');
+      throw new Error("Invalid tEXt chunk format");
     }
 
     // Decode keyword (Latin-1)
@@ -129,7 +135,7 @@ class TavernCardParser {
    * Decode Latin-1 encoded bytes to string
    */
   static latin1Decode(data) {
-    let str = '';
+    let str = "";
     for (let i = 0; i < data.length; i++) {
       str += String.fromCharCode(data[i]);
     }
@@ -150,7 +156,7 @@ class TavernCardParser {
     }
 
     // Decode UTF-8
-    const decoder = new TextDecoder('utf-8');
+    const decoder = new TextDecoder("utf-8");
     return decoder.decode(bytes);
   }
 
@@ -159,13 +165,13 @@ class TavernCardParser {
    */
   static validateCard(cardData) {
     if (!cardData || !cardData.data) {
-      throw new Error('Invalid character card structure');
+      throw new Error("Invalid character card structure");
     }
 
     const data = cardData.data;
 
     // Check required fields
-    const requiredFields = ['name'];
+    const requiredFields = ["name"];
     for (const field of requiredFields) {
       if (!data.hasOwnProperty(field)) {
         throw new Error(`Missing required field: ${field}`);
@@ -182,15 +188,17 @@ class TavernCardParser {
     const data = cardData.data;
 
     return {
-      name: data.name || 'Unknown',
-      description: data.description || '',
-      personality: data.personality || '',
-      scenario: data.scenario || '',
-      firstMessage: data.first_mes || '',
-      creator: data.creator || 'Unknown',
-      version: data.character_version || cardData.spec_version || 'Unknown',
-      hasAlternateGreetings: Array.isArray(data.alternate_greetings) && data.alternate_greetings.length > 0,
-      hasCharacterBook: !!data.character_book
+      name: data.name || "Unknown",
+      description: data.description || "",
+      personality: data.personality || "",
+      scenario: data.scenario || "",
+      firstMessage: data.first_mes || "",
+      creator: data.creator || "Unknown",
+      version: data.character_version || cardData.spec_version || "Unknown",
+      hasAlternateGreetings:
+        Array.isArray(data.alternate_greetings) &&
+        data.alternate_greetings.length > 0,
+      hasCharacterBook: !!data.character_book,
     };
   }
 }

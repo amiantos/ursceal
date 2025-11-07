@@ -1,11 +1,13 @@
 <!DOCTYPE html>
 <html lang="en">
+
 <head>
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
   <title>Ursceal</title>
   <link rel="stylesheet" href="styles.css">
 </head>
+
 <body>
   <!-- Header -->
   <header class="app-header">
@@ -15,7 +17,7 @@
     <div class="header-right">
       <button id="settingsBtn" class="icon-btn" title="Settings">
         <svg width="20" height="20" viewBox="0 0 20 20" fill="currentColor">
-          <path d="M10 6a2 2 0 100-4 2 2 0 000 4zM10 12a2 2 0 100-4 2 2 0 000 4zM10 18a2 2 0 100-4 2 2 0 000 4z"/>
+          <path d="M10 6a2 2 0 100-4 2 2 0 000 4zM10 12a2 2 0 100-4 2 2 0 000 4zM10 18a2 2 0 100-4 2 2 0 000 4z" />
         </svg>
       </button>
     </div>
@@ -99,12 +101,9 @@
     <main class="content-area">
       <!-- Editor -->
       <div class="editor-container">
-        <textarea
-          id="storyEditor"
-          class="story-editor"
+        <textarea id="storyEditor" class="story-editor"
           placeholder="Import a character card to begin, or start writing your story here..."
-          spellcheck="true"
-        ></textarea>
+          spellcheck="true"></textarea>
       </div>
 
       <!-- Reasoning Panel (Toggleable) -->
@@ -130,25 +129,13 @@
       <div class="modal-body">
         <div class="form-group">
           <label for="apiKeyInput">DeepSeek API Key</label>
-          <input
-            type="password"
-            id="apiKeyInput"
-            class="input-field"
-            placeholder="sk-..."
-          >
+          <input type="password" id="apiKeyInput" class="input-field" placeholder="sk-...">
           <small>Your API key is stored locally and never sent anywhere except DeepSeek's API.</small>
         </div>
 
         <div class="form-group">
           <label for="maxTokensInput">Max Tokens per Generation</label>
-          <input
-            type="number"
-            id="maxTokensInput"
-            class="input-field"
-            value="4000"
-            min="100"
-            max="8000"
-          >
+          <input type="number" id="maxTokensInput" class="input-field" value="4000" min="100" max="8000">
           <small>Higher values allow longer generations but cost more.</small>
         </div>
 
@@ -181,7 +168,8 @@
             <input type="checkbox" id="thirdPersonToggle" checked>
             <span>Enforce third-person past tense</span>
           </label>
-          <small>Write in third-person past tense perspective (he/she/they said, walked, etc.). No present tense or first person.</small>
+          <small>Write in third-person past tense perspective (he/she/they said, walked, etc.). No present tense or
+            first person.</small>
         </div>
 
         <div class="form-group">
@@ -189,7 +177,8 @@
             <input type="checkbox" id="filterAsterisksToggle" checked>
             <span>Filter asterisks (*)</span>
           </label>
-          <small>Remove asterisks from character cards and generated content (common in RP chats but not novel-style writing).</small>
+          <small>Remove asterisks from character cards and generated content (common in RP chats but not novel-style
+            writing).</small>
         </div>
       </div>
       <div class="modal-footer">
@@ -209,32 +198,19 @@
       <div class="modal-body">
         <div class="form-group">
           <label for="personaNameInput">Name</label>
-          <input
-            type="text"
-            id="personaNameInput"
-            class="input-field"
-            placeholder="Your character's name"
-          >
+          <input type="text" id="personaNameInput" class="input-field" placeholder="Your character's name">
         </div>
 
         <div class="form-group">
           <label for="personaDescInput">Description</label>
-          <textarea
-            id="personaDescInput"
-            class="input-field textarea-field"
-            rows="4"
-            placeholder="Physical appearance, background, traits..."
-          ></textarea>
+          <textarea id="personaDescInput" class="input-field textarea-field" rows="4"
+            placeholder="Physical appearance, background, traits..."></textarea>
         </div>
 
         <div class="form-group">
           <label for="personaStyleInput">Writing Style Preferences</label>
-          <textarea
-            id="personaStyleInput"
-            class="input-field textarea-field"
-            rows="3"
-            placeholder="How should this character be written? (e.g., introspective, action-oriented, descriptive...)"
-          ></textarea>
+          <textarea id="personaStyleInput" class="input-field textarea-field" rows="3"
+            placeholder="How should this character be written? (e.g., introspective, action-oriented, descriptive...)"></textarea>
         </div>
       </div>
       <div class="modal-footer">
@@ -254,86 +230,53 @@
       <div class="modal-body" style="max-height: 70vh; overflow-y: auto;">
         <div class="form-group">
           <label for="charNameInput">Name</label>
-          <input
-            type="text"
-            id="charNameInput"
-            class="input-field"
-            placeholder="Character name"
-          >
+          <input type="text" id="charNameInput" class="input-field" placeholder="Character name">
         </div>
 
         <div class="form-group">
           <label for="charDescInput">Description</label>
-          <textarea
-            id="charDescInput"
-            class="input-field textarea-field"
-            rows="4"
-            placeholder="Physical appearance, background, biography..."
-          ></textarea>
+          <textarea id="charDescInput" class="input-field textarea-field" rows="4"
+            placeholder="Physical appearance, background, biography..."></textarea>
           <small>Can use {{user}} for persona name</small>
         </div>
 
         <div class="form-group">
           <label for="charPersonalityInput">Personality</label>
-          <textarea
-            id="charPersonalityInput"
-            class="input-field textarea-field"
-            rows="4"
-            placeholder="Personality traits, mannerisms, speech patterns..."
-          ></textarea>
+          <textarea id="charPersonalityInput" class="input-field textarea-field" rows="4"
+            placeholder="Personality traits, mannerisms, speech patterns..."></textarea>
         </div>
 
         <div class="form-group">
           <label for="charScenarioInput">Scenario</label>
-          <textarea
-            id="charScenarioInput"
-            class="input-field textarea-field"
-            rows="3"
-            placeholder="Current situation, setting, context..."
-          ></textarea>
+          <textarea id="charScenarioInput" class="input-field textarea-field" rows="3"
+            placeholder="Current situation, setting, context..."></textarea>
           <small>Can use {{user}} and {{char}}/{{character}} placeholders</small>
         </div>
 
         <div class="form-group">
           <label for="charFirstMesInput">First Message</label>
-          <textarea
-            id="charFirstMesInput"
-            class="input-field textarea-field"
-            rows="4"
-            placeholder="Initial greeting or opening scene..."
-          ></textarea>
+          <textarea id="charFirstMesInput" class="input-field textarea-field" rows="4"
+            placeholder="Initial greeting or opening scene..."></textarea>
         </div>
 
         <div class="form-group">
           <label for="charMesExampleInput">Dialogue Examples</label>
-          <textarea
-            id="charMesExampleInput"
-            class="input-field textarea-field"
-            rows="5"
-            placeholder="Example dialogue to guide writing style..."
-          ></textarea>
+          <textarea id="charMesExampleInput" class="input-field textarea-field" rows="5"
+            placeholder="Example dialogue to guide writing style..."></textarea>
           <small>Optional: Examples of how the character speaks</small>
         </div>
 
         <div class="form-group">
           <label for="charSystemPromptInput">System Prompt (Advanced)</label>
-          <textarea
-            id="charSystemPromptInput"
-            class="input-field textarea-field"
-            rows="3"
-            placeholder="Custom system instructions..."
-          ></textarea>
+          <textarea id="charSystemPromptInput" class="input-field textarea-field" rows="3"
+            placeholder="Custom system instructions..."></textarea>
           <small>Optional: Override default system prompt</small>
         </div>
 
         <div class="form-group">
           <label for="charPostHistoryInput">Post-History Instructions (Advanced)</label>
-          <textarea
-            id="charPostHistoryInput"
-            class="input-field textarea-field"
-            rows="3"
-            placeholder="Instructions added after conversation history..."
-          ></textarea>
+          <textarea id="charPostHistoryInput" class="input-field textarea-field" rows="3"
+            placeholder="Instructions added after conversation history..."></textarea>
           <small>Optional: Strong influence on generation style</small>
         </div>
       </div>
@@ -354,12 +297,8 @@
       <div class="modal-body">
         <div class="form-group">
           <label for="customPromptInput">What would you like to generate?</label>
-          <textarea
-            id="customPromptInput"
-            class="input-field textarea-field"
-            rows="5"
-            placeholder="Example: Describe the ancient castle in vivid detail, focusing on its mysterious history..."
-          ></textarea>
+          <textarea id="customPromptInput" class="input-field textarea-field" rows="5"
+            placeholder="Example: Describe the ancient castle in vivid detail, focusing on its mysterious history..."></textarea>
         </div>
       </div>
       <div class="modal-footer">
@@ -379,23 +318,13 @@
       <div class="modal-body">
         <div class="form-group">
           <label>System Prompt</label>
-          <textarea
-            id="systemPromptDisplay"
-            class="input-field textarea-field"
-            rows="10"
-            readonly
-            style="font-family: monospace; font-size: 0.8rem;"
-          ></textarea>
+          <textarea id="systemPromptDisplay" class="input-field textarea-field" rows="10" readonly
+            style="font-family: monospace; font-size: 0.8rem;"></textarea>
         </div>
         <div class="form-group">
           <label>User Prompt</label>
-          <textarea
-            id="userPromptDisplay"
-            class="input-field textarea-field"
-            rows="10"
-            readonly
-            style="font-family: monospace; font-size: 0.8rem;"
-          ></textarea>
+          <textarea id="userPromptDisplay" class="input-field textarea-field" rows="10" readonly
+            style="font-family: monospace; font-size: 0.8rem;"></textarea>
         </div>
       </div>
       <div class="modal-footer">
@@ -412,4 +341,5 @@
   <script src="deepseek-api.js"></script>
   <script src="app.js"></script>
 </body>
+
 </html>

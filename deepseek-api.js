@@ -6,8 +6,8 @@
 class DeepSeekAPI {
   constructor(apiKey) {
     this.apiKey = apiKey;
-    this.baseURL = 'https://api.deepseek.com/v1';
-    this.model = 'deepseek-reasoner';
+    this.baseURL = "https://api.deepseek.com/v1";
+    this.model = "deepseek-reasoner";
   }
 
   /**
@@ -26,11 +26,11 @@ class DeepSeekAPI {
     let result = text;
 
     // Replace {{user}} with persona name
-    const userName = persona?.name || 'User';
+    const userName = persona?.name || "User";
     result = result.replace(/\{\{user\}\}/gi, userName);
 
     // Replace {{char}} and {{character}} with character name
-    const charName = characterCard?.data?.name || 'Character';
+    const charName = characterCard?.data?.name || "Character";
     result = result.replace(/\{\{char\}\}/gi, charName);
     result = result.replace(/\{\{character\}\}/gi, charName);
 
@@ -42,14 +42,15 @@ class DeepSeekAPI {
    */
   filterAsterisks(text, shouldFilter) {
     if (!text || !shouldFilter) return text;
-    return text.replace(/\*/g, '');
+    return text.replace(/\*/g, "");
   }
 
   /**
    * Build system prompt from character card and persona
    */
   buildSystemPrompt(characterCard, persona, settings = {}) {
-    let prompt = 'You are a creative writing assistant helping to write a novel-style story.\n\n';
+    let prompt =
+      "You are a creative writing assistant helping to write a novel-style story.\n\n";
 
     // Add character information
     if (characterCard && characterCard.data) {
@@ -58,52 +59,109 @@ class DeepSeekAPI {
 
       // Use custom system prompt if provided (with replacements and filtering)
       if (char.system_prompt) {
-        const processed = this.replacePlaceholders(char.system_prompt, characterCard, persona);
-        prompt += this.filterAsterisks(processed, filterAst) + '\n\n';
+        const processed = this.replacePlaceholders(
+          char.system_prompt,
+          characterCard,
+          persona
+        );
+        prompt += this.filterAsterisks(processed, filterAst) + "\n\n";
       }
 
-      prompt += '=== CHARACTER PROFILE ===\n';
+      prompt += "=== CHARACTER PROFILE ===\n";
       prompt += `Name: ${char.name}\n`;
 
       if (char.description) {
-        const processed = this.replacePlaceholders(char.description, characterCard, persona);
-        prompt += `Description: ${this.filterAsterisks(processed, filterAst)}\n`;
+        const processed = this.replacePlaceholders(
+          char.description,
+          characterCard,
+          persona
+        );
+        prompt += `Description: ${this.filterAsterisks(
+          processed,
+          filterAst
+        )}\n`;
       }
 
       if (char.personality) {
-        const processed = this.replacePlaceholders(char.personality, characterCard, persona);
-        prompt += `Personality: ${this.filterAsterisks(processed, filterAst)}\n`;
+        const processed = this.replacePlaceholders(
+          char.personality,
+          characterCard,
+          persona
+        );
+        prompt += `Personality: ${this.filterAsterisks(
+          processed,
+          filterAst
+        )}\n`;
       }
 
       if (char.scenario) {
-        const processed = this.replacePlaceholders(char.scenario, characterCard, persona);
-        prompt += `\nCurrent Scenario: ${this.filterAsterisks(processed, filterAst)}\n`;
+        const processed = this.replacePlaceholders(
+          char.scenario,
+          characterCard,
+          persona
+        );
+        prompt += `\nCurrent Scenario: ${this.filterAsterisks(
+          processed,
+          filterAst
+        )}\n`;
       }
 
       // Add writing style examples (with replacements and filtering)
       if (char.mes_example) {
-        const processed = this.replacePlaceholders(char.mes_example, characterCard, persona);
-        prompt += `\n=== DIALOGUE STYLE EXAMPLES ===\n${this.filterAsterisks(processed, filterAst)}\n`;
+        const processed = this.replacePlaceholders(
+          char.mes_example,
+          characterCard,
+          persona
+        );
+        prompt += `\n=== DIALOGUE STYLE EXAMPLES ===\n${this.filterAsterisks(
+          processed,
+          filterAst
+        )}\n`;
       }
 
       // Add post-history instructions (with replacements and filtering)
       if (char.post_history_instructions) {
-        const processed = this.replacePlaceholders(char.post_history_instructions, characterCard, persona);
-        prompt += `\n=== WRITING GUIDELINES ===\n${this.filterAsterisks(processed, filterAst)}\n`;
+        const processed = this.replacePlaceholders(
+          char.post_history_instructions,
+          characterCard,
+          persona
+        );
+        prompt += `\n=== WRITING GUIDELINES ===\n${this.filterAsterisks(
+          processed,
+          filterAst
+        )}\n`;
       }
     }
 
     // Add user persona
     if (persona && persona.name) {
+      const filterAst = settings.filterAsterisks;
+
       prompt += `\n=== USER CHARACTER (PERSONA) ===\n`;
       prompt += `Name: ${persona.name}\n`;
 
       if (persona.description) {
-        prompt += `Description: ${persona.description}\n`;
+        const processed = this.replacePlaceholders(
+          persona.description,
+          characterCard,
+          persona
+        );
+        prompt += `Description: ${this.filterAsterisks(
+          processed,
+          filterAst
+        )}\n`;
       }
 
       if (persona.writingStyle) {
-        prompt += `Writing Style: ${persona.writingStyle}\n`;
+        const processed = this.replacePlaceholders(
+          persona.writingStyle,
+          characterCard,
+          persona
+        );
+        prompt += `Writing Style: ${this.filterAsterisks(
+          processed,
+          filterAst
+        )}\n`;
       }
     }
 
@@ -137,44 +195,50 @@ class DeepSeekAPI {
    */
   async generateStreaming(userPrompt, options = {}) {
     if (!this.apiKey) {
-      throw new Error('API key not set');
+      throw new Error("API key not set");
     }
 
-    const systemPrompt = this.buildSystemPrompt(options.characterCard, options.persona, options.settings);
+    const systemPrompt = this.buildSystemPrompt(
+      options.characterCard,
+      options.persona,
+      options.settings
+    );
 
     // No conversation history - document content is included in userPrompt
     const messages = [
-      { role: 'system', content: systemPrompt },
-      { role: 'user', content: userPrompt }
+      { role: "system", content: systemPrompt },
+      { role: "user", content: userPrompt },
     ];
 
     const controller = new AbortController();
 
     const response = await fetch(`${this.baseURL}/chat/completions`, {
-      method: 'POST',
+      method: "POST",
       headers: {
-        'Content-Type': 'application/json',
-        'Authorization': `Bearer ${this.apiKey}`
+        "Content-Type": "application/json",
+        Authorization: `Bearer ${this.apiKey}`,
       },
       body: JSON.stringify({
         model: this.model,
         messages: messages,
         stream: true,
-        max_tokens: options.maxTokens || 4000
+        max_tokens: options.maxTokens || 4000,
       }),
-      signal: controller.signal
+      signal: controller.signal,
     });
 
     if (!response.ok) {
       const errorData = await response.json().catch(() => ({}));
-      throw new Error(errorData.error?.message || `API request failed: ${response.statusText}`);
+      throw new Error(
+        errorData.error?.message || `API request failed: ${response.statusText}`
+      );
     }
 
     return {
       stream: this.parseStreamResponse(response.body),
       abort: () => controller.abort(),
       userPrompt,
-      systemPrompt
+      systemPrompt,
     };
   }
 
@@ -184,7 +248,7 @@ class DeepSeekAPI {
   async *parseStreamResponse(body) {
     const reader = body.getReader();
     const decoder = new TextDecoder();
-    let buffer = '';
+    let buffer = "";
 
     try {
       while (true) {
@@ -193,19 +257,19 @@ class DeepSeekAPI {
         if (done) break;
 
         buffer += decoder.decode(value, { stream: true });
-        const lines = buffer.split('\n');
+        const lines = buffer.split("\n");
 
         // Keep the last incomplete line in buffer
-        buffer = lines.pop() || '';
+        buffer = lines.pop() || "";
 
         for (const line of lines) {
           const trimmed = line.trim();
 
-          if (trimmed === '' || trimmed === 'data: [DONE]') {
+          if (trimmed === "" || trimmed === "data: [DONE]") {
             continue;
           }
 
-          if (trimmed.startsWith('data: ')) {
+          if (trimmed.startsWith("data: ")) {
             try {
               const jsonStr = trimmed.slice(6); // Remove 'data: ' prefix
               const data = JSON.parse(jsonStr);
@@ -216,11 +280,11 @@ class DeepSeekAPI {
                 yield {
                   reasoning: delta.reasoning_content || null,
                   content: delta.content || null,
-                  finished: data.choices[0].finish_reason !== null
+                  finished: data.choices[0].finish_reason !== null,
                 };
               }
             } catch (e) {
-              console.warn('Failed to parse SSE line:', e);
+              console.warn("Failed to parse SSE line:", e);
             }
           }
         }
@@ -235,43 +299,49 @@ class DeepSeekAPI {
    */
   async generate(userPrompt, options = {}) {
     if (!this.apiKey) {
-      throw new Error('API key not set');
+      throw new Error("API key not set");
     }
 
-    const systemPrompt = this.buildSystemPrompt(options.characterCard, options.persona, options.settings);
+    const systemPrompt = this.buildSystemPrompt(
+      options.characterCard,
+      options.persona,
+      options.settings
+    );
 
     // No conversation history - document content is included in userPrompt
     const messages = [
-      { role: 'system', content: systemPrompt },
-      { role: 'user', content: userPrompt }
+      { role: "system", content: systemPrompt },
+      { role: "user", content: userPrompt },
     ];
 
     const response = await fetch(`${this.baseURL}/chat/completions`, {
-      method: 'POST',
+      method: "POST",
       headers: {
-        'Content-Type': 'application/json',
-        'Authorization': `Bearer ${this.apiKey}`
+        "Content-Type": "application/json",
+        Authorization: `Bearer ${this.apiKey}`,
       },
       body: JSON.stringify({
         model: this.model,
         messages: messages,
         stream: false,
-        max_tokens: options.maxTokens || 4000
-      })
+        max_tokens: options.maxTokens || 4000,
+      }),
     });
 
     if (!response.ok) {
       const errorData = await response.json().catch(() => ({}));
-      throw new Error(errorData.error?.message || `API request failed: ${response.statusText}`);
+      throw new Error(
+        errorData.error?.message || `API request failed: ${response.statusText}`
+      );
     }
 
     const data = await response.json();
     const choice = data.choices[0];
 
     return {
-      reasoning: choice.message.reasoning_content || '',
-      content: choice.message.content || '',
-      usage: data.usage
+      reasoning: choice.message.reasoning_content || "",
+      content: choice.message.content || "",
+      usage: data.usage,
     };
   }
 
@@ -282,44 +352,45 @@ class DeepSeekAPI {
   buildGenerationPrompt(type, options = {}) {
     const { characterCard, currentContent, customPrompt, persona } = options;
 
-    let storyContext = '';
-    let instruction = '';
+    let storyContext = "";
+    let instruction = "";
 
     // Include current content if it exists (up to ~16,000 tokens = ~64,000 characters)
     if (currentContent && currentContent.trim()) {
       const maxChars = 64000; // Rough estimate: 4 chars per token, 16k tokens
-      const contentToInclude = currentContent.length > maxChars
-        ? '...' + currentContent.slice(-maxChars)
-        : currentContent;
+      const contentToInclude =
+        currentContent.length > maxChars
+          ? "..." + currentContent.slice(-maxChars)
+          : currentContent;
 
       storyContext = `Here is the current story so far:\n\n${contentToInclude}\n\n---\n\n`;
     }
 
     // Add specific instruction based on type
     switch (type) {
-      case 'continue':
-        instruction = 'Continue the story naturally from where it left off. Write the next 2-3 paragraphs, maintaining the established tone and style.';
+      case "continue":
+        instruction =
+          "Continue the story naturally from where it left off. Write the next 2-3 paragraphs, maintaining the established tone and style.";
         break;
 
-      case 'character':
-        const charName = characterCard?.data?.name || 'the character';
+      case "character":
+        const charName = characterCard?.data?.name || "the character";
         instruction = `Write the next part of the story from ${charName}'s perspective. Focus on their thoughts, actions, and dialogue. Write 2-3 paragraphs.`;
         break;
 
-      case 'custom':
-        instruction = customPrompt || 'Continue the story.';
+      case "custom":
+        instruction = customPrompt || "Continue the story.";
         break;
 
       default:
-        instruction = 'Continue the story.';
+        instruction = "Continue the story.";
     }
 
     return {
       fullPrompt: storyContext + instruction,
-      instruction: instruction  // Just the instruction without the story context
+      instruction: instruction, // Just the instruction without the story context
     };
   }
-
 }
 
 // Export for use in other modules
