@@ -549,7 +549,18 @@ Rewritten version:`;
 
   // Reasoning Panel
   showReasoning() {
+    // Check if we're scrolled to the bottom before opening
+    const wasAtBottom = this.editor.scrollHeight - this.editor.scrollTop <= this.editor.clientHeight + 10;
+
     this.reasoningPanel.classList.remove('hidden');
+
+    // If we were at the bottom, scroll back to bottom after panel opens
+    if (wasAtBottom) {
+      // Wait for CSS transition to complete
+      setTimeout(() => {
+        this.editor.scrollTop = this.editor.scrollHeight;
+      }, 350); // 300ms transition + 50ms buffer
+    }
   }
 
   hideReasoning() {

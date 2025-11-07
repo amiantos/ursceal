@@ -286,10 +286,11 @@ class DeepSeekAPI {
 
     let prompt = '';
 
-    // Include current content if it exists (last 2000 characters to avoid token limits)
+    // Include current content if it exists (up to ~16,000 tokens = ~64,000 characters)
     if (currentContent && currentContent.trim()) {
-      const contentToInclude = currentContent.length > 2000
-        ? '...' + currentContent.slice(-2000)
+      const maxChars = 64000; // Rough estimate: 4 chars per token, 16k tokens
+      const contentToInclude = currentContent.length > maxChars
+        ? '...' + currentContent.slice(-maxChars)
         : currentContent;
 
       prompt += `Here is the current story so far:\n\n${contentToInclude}\n\n---\n\n`;

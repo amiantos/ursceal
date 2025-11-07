@@ -296,17 +296,18 @@ body {
 
 /* Reasoning Panel */
 .reasoning-panel {
-  position: absolute;
-  bottom: 0;
-  left: 0;
-  right: 0;
-  height: 250px;
+  height: 0;
+  overflow: hidden;
   background-color: var(--bg-primary);
   border-top: 2px solid var(--primary-color);
   box-shadow: 0 -4px 12px rgba(0, 0, 0, 0.1);
   display: flex;
   flex-direction: column;
-  z-index: 5;
+  transition: height 0.3s ease;
+}
+
+.reasoning-panel:not(.hidden) {
+  height: 250px;
 }
 
 .reasoning-header {
@@ -316,6 +317,7 @@ body {
   padding: 0.75rem 1.5rem;
   background-color: var(--bg-secondary);
   border-bottom: 1px solid var(--border-color);
+  flex-shrink: 0;
 }
 
 .reasoning-header h3 {
@@ -332,6 +334,7 @@ body {
   line-height: 1.6;
   font-family: "Menlo", "Monaco", "Courier New", monospace;
   color: var(--text-secondary);
+  min-height: 0;
 }
 
 .reasoning-empty {
@@ -339,14 +342,6 @@ body {
   font-style: italic;
   text-align: center;
   padding: 2rem;
-}
-
-.reasoning-panel.visible {
-  display: flex;
-}
-
-.reasoning-panel.visible ~ .editor-container {
-  height: calc(100% - 250px);
 }
 
 /* Modal */
