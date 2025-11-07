@@ -1,4 +1,4 @@
-# Novel Writer - AI-Powered Story Tool
+# Úrscéal
 
 A browser-based novel writing application that uses DeepSeek's reasoning model and Tavern character cards to help write stories.
 

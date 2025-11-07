@@ -45,21 +45,10 @@ body {
   z-index: 10;
 }
 
-.header-left {
-  display: flex;
-  align-items: baseline;
-  gap: 1rem;
-}
-
 .app-header h1 {
   font-size: 1.5rem;
   font-weight: 600;
   color: var(--primary-color);
-}
-
-.header-subtitle {
-  font-size: 0.875rem;
-  color: var(--text-secondary);
 }
 
 .header-right {
