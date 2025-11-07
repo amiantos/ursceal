@@ -13,7 +13,7 @@ class NovelWriterApp {
       showReasoning: false,
       autoSave: true,
       showPrompt: false,
-      firstPerson: true,
+      thirdPerson: true,
       filterAsterisks: true
     };
     this.deepSeekAPI = null;
@@ -71,7 +71,7 @@ class NovelWriterApp {
     this.continueStoryBtn = document.getElementById('continueStoryBtn');
     this.characterResponseBtn = document.getElementById('characterResponseBtn');
     this.customPromptBtn = document.getElementById('customPromptBtn');
-    this.rewriteFirstPersonBtn = document.getElementById('rewriteFirstPersonBtn');
+    this.rewriteThirdPersonBtn = document.getElementById('rewriteThirdPersonBtn');
     this.generationStatus = document.getElementById('generationStatus');
     this.statusText = document.getElementById('statusText');
 
@@ -89,7 +89,7 @@ class NovelWriterApp {
     this.showReasoningToggle = document.getElementById('showReasoningToggle');
     this.autoSaveToggle = document.getElementById('autoSaveToggle');
     this.showPromptToggle = document.getElementById('showPromptToggle');
-    this.firstPersonToggle = document.getElementById('firstPersonToggle');
+    this.thirdPersonToggle = document.getElementById('thirdPersonToggle');
     this.filterAsterisksToggle = document.getElementById('filterAsterisksToggle');
     this.saveSettingsBtn = document.getElementById('saveSettingsBtn');
 
@@ -135,7 +135,7 @@ class NovelWriterApp {
     this.continueStoryBtn.addEventListener('click', () => this.generate('continue'));
     this.characterResponseBtn.addEventListener('click', () => this.generate('character'));
     this.customPromptBtn.addEventListener('click', () => this.openCustomPromptModal());
-    this.rewriteFirstPersonBtn.addEventListener('click', () => this.rewriteToFirstPerson());
+    this.rewriteThirdPersonBtn.addEventListener('click', () => this.rewriteToThirdPerson());
     this.generateCustomBtn.addEventListener('click', () => this.generateCustom());
 
     // Document controls
@@ -324,7 +324,7 @@ class NovelWriterApp {
     this.showReasoningToggle.checked = this.settings.showReasoning;
     this.autoSaveToggle.checked = this.settings.autoSave;
     this.showPromptToggle.checked = this.settings.showPrompt;
-    this.firstPersonToggle.checked = this.settings.firstPerson;
+    this.thirdPersonToggle.checked = this.settings.thirdPerson;
     this.filterAsterisksToggle.checked = this.settings.filterAsterisks;
     this.openModal(this.settingsModal);
   }
@@ -337,7 +337,7 @@ class NovelWriterApp {
     this.settings.showReasoning = this.showReasoningToggle.checked;
     this.settings.autoSave = this.autoSaveToggle.checked;
     this.settings.showPrompt = this.showPromptToggle.checked;
-    this.settings.firstPerson = this.firstPersonToggle.checked;
+    this.settings.thirdPerson = this.thirdPersonToggle.checked;
     this.settings.filterAsterisks = this.filterAsterisksToggle.checked;
 
     // Initialize DeepSeek API with new key
@@ -407,7 +407,7 @@ class NovelWriterApp {
     await this.generateWithPrompt(fullPrompt, instruction);
   }
 
-  async rewriteToFirstPerson() {
+  async rewriteToThirdPerson() {
     if (!this.settings.apiKey) {
       this.showToast('Please set your DeepSeek API key in settings', 'error');
       this.openSettingsModal();
@@ -419,7 +419,7 @@ class NovelWriterApp {
       return;
     }
 
-    if (!confirm('This will replace the entire document with a rewritten version in first-person omniscient perspective. Continue?')) {
+    if (!confirm('This will replace the entire document with a rewritten version in third-person past tense. Continue?')) {
       return;
     }
 
@@ -427,15 +427,15 @@ class NovelWriterApp {
       this.deepSeekAPI = new DeepSeekAPI(this.settings.apiKey);
     }
 
-    const personaName = this.persona?.name || 'the narrator';
+    const rewritePrompt = `Rewrite the following story in third-person past tense perspective.
 
-    const rewritePrompt = `Rewrite the following story in first-person omniscient perspective, where "I" is ${personaName}.
+Use he/she/they pronouns and past tense verbs throughout (said, walked, thought, etc.).
 
-The narrator (${personaName}) should observe and describe the events, including the thoughts and feelings of other characters, but should not take actions or speak dialogue unless it makes sense for them to be part of the scene.
-
-Maintain the plot, events, and character interactions, but shift the narrative voice to first-person omniscient.
+Maintain the plot, events, and character interactions, but ensure all narrative and dialogue tags use third-person past tense.
 
 Remove any asterisks (*) used for actions - write everything as prose.
+
+Do NOT use first-person (I, me, my) or present tense.
 
 Here is the story to rewrite:
 
@@ -450,7 +450,7 @@ Rewritten version:`;
       this.editor.value = '';
 
       // For rewrite, use the prompt as both full and instruction (special case)
-      await this.generateWithPrompt(rewritePrompt, 'Rewrite to first-person omniscient');
+      await this.generateWithPrompt(rewritePrompt, 'Rewrite to third-person past tense');
     } catch (error) {
       console.error('Rewrite error:', error);
       this.showToast(`Rewrite failed: ${error.message}`, 'error');
@@ -716,7 +716,7 @@ Rewritten version:`;
     this.continueStoryBtn.disabled = !enabled;
     this.characterResponseBtn.disabled = !enabled;
     this.customPromptBtn.disabled = !enabled;
-    this.rewriteFirstPersonBtn.disabled = !enabled;
+    this.rewriteThirdPersonBtn.disabled = !enabled;
   }
 
   // Modal Management

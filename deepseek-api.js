@@ -113,15 +113,13 @@ class DeepSeekAPI {
     prompt += `Maintain consistency with established characters and plot.\n`;
     prompt += `Focus on showing rather than telling, with vivid descriptions and natural dialogue.\n`;
 
-    // Add first-person perspective instructions
-    if (settings.firstPerson && persona && persona.name) {
+    // Add third-person past tense instructions
+    if (settings.thirdPerson) {
       prompt += `\n=== PERSPECTIVE ===\n`;
-      prompt += `Write in first-person omniscient perspective where "I" is ${persona.name}.\n`;
-      prompt += `${persona.name} is the narrator who observes and describes events.\n`;
-      prompt += `The narrator can describe the thoughts and feelings of other characters.\n`;
-      prompt += `The narrator should NOT take actions or speak dialogue unless explicitly part of the scene.\n`;
-      prompt += `DO NOT write actions or dialogue for ${persona.name} unless the user specifically requests it.\n`;
-      prompt += `Write what ${persona.name} observes, not what ${persona.name} does.\n`;
+      prompt += `Write in third-person past tense perspective.\n`;
+      prompt += `Use he/she/they pronouns and past tense verbs (said, walked, thought, etc.).\n`;
+      prompt += `Do NOT use first-person (I, me, my, we) or present tense.\n`;
+      prompt += `All narrative and dialogue tags should be in past tense.\n`;
     }
 
     // Add asterisk filtering instruction

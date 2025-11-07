@@ -70,8 +70,8 @@
           <button id="customPromptBtn" class="btn btn-secondary" disabled>
             Custom Prompt
           </button>
-          <button id="rewriteFirstPersonBtn" class="btn btn-secondary" disabled>
-            Rewrite to First Person
+          <button id="rewriteThirdPersonBtn" class="btn btn-secondary" disabled>
+            Rewrite to Third Person
           </button>
         </div>
         <div id="generationStatus" class="generation-status hidden">
@@ -178,10 +178,10 @@
 
         <div class="form-group">
           <label class="checkbox-label">
-            <input type="checkbox" id="firstPersonToggle" checked>
-            <span>Enforce first-person omniscient</span>
+            <input type="checkbox" id="thirdPersonToggle" checked>
+            <span>Enforce third-person past tense</span>
           </label>
-          <small>Write from persona's perspective using "I". AI will not write for the persona unless explicitly asked.</small>
+          <small>Write in third-person past tense perspective (he/she/they said, walked, etc.). No present tense or first person.</small>
         </div>
 
         <div class="form-group">
@@ -233,7 +233,7 @@
             id="personaStyleInput"
             class="input-field textarea-field"
             rows="3"
-            placeholder="How should this character be written? (e.g., first person, introspective, action-oriented...)"
+            placeholder="How should this character be written? (e.g., introspective, action-oriented, descriptive...)"
           ></textarea>
         </div>
       </div>
