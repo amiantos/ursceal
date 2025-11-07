@@ -1,0 +1,294 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Novel Writer - AI-Powered Story Tool</title>
+  <link rel="stylesheet" href="styles.css">
+</head>
+<body>
+  <!-- Header -->
+  <header class="app-header">
+    <div class="header-left">
+      <h1>Novel Writer</h1>
+      <span class="header-subtitle">AI-Powered Story Tool</span>
+    </div>
+    <div class="header-right">
+      <button id="settingsBtn" class="icon-btn" title="Settings">
+        <svg width="20" height="20" viewBox="0 0 20 20" fill="currentColor">
+          <path d="M10 6a2 2 0 100-4 2 2 0 000 4zM10 12a2 2 0 100-4 2 2 0 000 4zM10 18a2 2 0 100-4 2 2 0 000 4z"/>
+        </svg>
+      </button>
+    </div>
+  </header>
+
+  <!-- Main Container -->
+  <div class="main-container">
+    <!-- Sidebar -->
+    <aside class="sidebar">
+      <!-- Character Card Section -->
+      <section class="sidebar-section">
+        <h2>Character Card</h2>
+        <div id="characterInfo" class="character-info hidden">
+          <div class="character-avatar" id="characterAvatar"></div>
+          <div class="character-details">
+            <h3 id="characterName">No Character</h3>
+            <p id="characterDesc" class="character-desc"></p>
+          </div>
+          <button id="clearCharacterBtn" class="btn btn-small btn-secondary">Clear Character</button>
+        </div>
+        <div id="noCharacter" class="no-character">
+          <p>No character loaded</p>
+          <label for="characterUpload" class="btn btn-primary">
+            Import Character Card
+          </label>
+          <input type="file" id="characterUpload" accept="image/png" style="display: none;">
+        </div>
+      </section>
+
+      <!-- Persona Section -->
+      <section class="sidebar-section">
+        <h2>Persona (Your Character)</h2>
+        <button id="editPersonaBtn" class="btn btn-secondary">Edit Persona</button>
+        <div id="personaSummary" class="persona-summary">
+          <p id="personaName">Not set</p>
+        </div>
+      </section>
+
+      <!-- Generation Controls -->
+      <section class="sidebar-section">
+        <h2>Generate Content</h2>
+        <div class="generation-buttons">
+          <button id="continueStoryBtn" class="btn btn-primary" disabled>
+            Continue Story
+          </button>
+          <button id="characterResponseBtn" class="btn btn-primary" disabled>
+            Character Response
+          </button>
+          <button id="customPromptBtn" class="btn btn-secondary" disabled>
+            Custom Prompt
+          </button>
+        </div>
+        <div id="generationStatus" class="generation-status hidden">
+          <div class="spinner"></div>
+          <span id="statusText">Generating...</span>
+        </div>
+        <button id="viewPromptBtn" class="btn btn-secondary btn-small hidden" style="margin-top: 0.5rem;">
+          View Last Prompt
+        </button>
+      </section>
+
+      <!-- Document Controls -->
+      <section class="sidebar-section">
+        <h2>Document</h2>
+        <div class="document-buttons">
+          <button id="saveBtn" class="btn btn-secondary">Save</button>
+          <button id="loadBtn" class="btn btn-secondary">Load</button>
+          <button id="clearBtn" class="btn btn-secondary">Clear</button>
+          <button id="exportBtn" class="btn btn-secondary">Export TXT</button>
+        </div>
+      </section>
+    </aside>
+
+    <!-- Main Content Area -->
+    <main class="content-area">
+      <!-- Editor -->
+      <div class="editor-container">
+        <textarea
+          id="storyEditor"
+          class="story-editor"
+          placeholder="Import a character card to begin, or start writing your story here..."
+          spellcheck="true"
+        ></textarea>
+      </div>
+
+      <!-- Reasoning Panel (Toggleable) -->
+      <div id="reasoningPanel" class="reasoning-panel hidden">
+        <div class="reasoning-header">
+          <h3>Model Reasoning</h3>
+          <button id="closeReasoningBtn" class="icon-btn">×</button>
+        </div>
+        <div id="reasoningContent" class="reasoning-content">
+          <p class="reasoning-empty">No reasoning to display yet. Generate content to see how the model thinks.</p>
+        </div>
+      </div>
+    </main>
+  </div>
+
+  <!-- Settings Modal -->
+  <div id="settingsModal" class="modal hidden">
+    <div class="modal-content">
+      <div class="modal-header">
+        <h2>Settings</h2>
+        <button class="close-btn">&times;</button>
+      </div>
+      <div class="modal-body">
+        <div class="form-group">
+          <label for="apiKeyInput">DeepSeek API Key</label>
+          <input
+            type="password"
+            id="apiKeyInput"
+            class="input-field"
+            placeholder="sk-..."
+          >
+          <small>Your API key is stored locally and never sent anywhere except DeepSeek's API.</small>
+        </div>
+
+        <div class="form-group">
+          <label for="maxTokensInput">Max Tokens per Generation</label>
+          <input
+            type="number"
+            id="maxTokensInput"
+            class="input-field"
+            value="4000"
+            min="100"
+            max="8000"
+          >
+          <small>Higher values allow longer generations but cost more.</small>
+        </div>
+
+        <div class="form-group">
+          <label class="checkbox-label">
+            <input type="checkbox" id="showReasoningToggle">
+            <span>Show reasoning panel</span>
+          </label>
+          <small>Display the model's thinking process alongside generated content.</small>
+        </div>
+
+        <div class="form-group">
+          <label class="checkbox-label">
+            <input type="checkbox" id="autoSaveToggle" checked>
+            <span>Auto-save document</span>
+          </label>
+          <small>Automatically save your work every 30 seconds.</small>
+        </div>
+
+        <div class="form-group">
+          <label class="checkbox-label">
+            <input type="checkbox" id="showPromptToggle">
+            <span>Show prompt viewer</span>
+          </label>
+          <small>Display a button to view the full prompt sent to the API.</small>
+        </div>
+      </div>
+      <div class="modal-footer">
+        <button id="saveSettingsBtn" class="btn btn-primary">Save Settings</button>
+        <button class="btn btn-secondary close-btn">Cancel</button>
+      </div>
+    </div>
+  </div>
+
+  <!-- Persona Editor Modal -->
+  <div id="personaModal" class="modal hidden">
+    <div class="modal-content">
+      <div class="modal-header">
+        <h2>Edit Persona</h2>
+        <button class="close-btn">&times;</button>
+      </div>
+      <div class="modal-body">
+        <div class="form-group">
+          <label for="personaNameInput">Name</label>
+          <input
+            type="text"
+            id="personaNameInput"
+            class="input-field"
+            placeholder="Your character's name"
+          >
+        </div>
+
+        <div class="form-group">
+          <label for="personaDescInput">Description</label>
+          <textarea
+            id="personaDescInput"
+            class="input-field textarea-field"
+            rows="4"
+            placeholder="Physical appearance, background, traits..."
+          ></textarea>
+        </div>
+
+        <div class="form-group">
+          <label for="personaStyleInput">Writing Style Preferences</label>
+          <textarea
+            id="personaStyleInput"
+            class="input-field textarea-field"
+            rows="3"
+            placeholder="How should this character be written? (e.g., first person, introspective, action-oriented...)"
+          ></textarea>
+        </div>
+      </div>
+      <div class="modal-footer">
+        <button id="savePersonaBtn" class="btn btn-primary">Save Persona</button>
+        <button class="btn btn-secondary close-btn">Cancel</button>
+      </div>
+    </div>
+  </div>
+
+  <!-- Custom Prompt Modal -->
+  <div id="customPromptModal" class="modal hidden">
+    <div class="modal-content">
+      <div class="modal-header">
+        <h2>Custom Prompt</h2>
+        <button class="close-btn">&times;</button>
+      </div>
+      <div class="modal-body">
+        <div class="form-group">
+          <label for="customPromptInput">What would you like to generate?</label>
+          <textarea
+            id="customPromptInput"
+            class="input-field textarea-field"
+            rows="5"
+            placeholder="Example: Describe the ancient castle in vivid detail, focusing on its mysterious history..."
+          ></textarea>
+        </div>
+      </div>
+      <div class="modal-footer">
+        <button id="generateCustomBtn" class="btn btn-primary">Generate</button>
+        <button class="btn btn-secondary close-btn">Cancel</button>
+      </div>
+    </div>
+  </div>
+
+  <!-- Prompt Viewer Modal -->
+  <div id="promptViewerModal" class="modal hidden">
+    <div class="modal-content" style="max-width: 800px;">
+      <div class="modal-header">
+        <h2>Last Prompt Sent to API</h2>
+        <button class="close-btn">&times;</button>
+      </div>
+      <div class="modal-body">
+        <div class="form-group">
+          <label>System Prompt</label>
+          <textarea
+            id="systemPromptDisplay"
+            class="input-field textarea-field"
+            rows="10"
+            readonly
+            style="font-family: monospace; font-size: 0.8rem;"
+          ></textarea>
+        </div>
+        <div class="form-group">
+          <label>User Prompt</label>
+          <textarea
+            id="userPromptDisplay"
+            class="input-field textarea-field"
+            rows="10"
+            readonly
+            style="font-family: monospace; font-size: 0.8rem;"
+          ></textarea>
+        </div>
+      </div>
+      <div class="modal-footer">
+        <button class="btn btn-secondary close-btn">Close</button>
+      </div>
+    </div>
+  </div>
+
+  <!-- Toast Notifications -->
+  <div id="toastContainer" class="toast-container"></div>
+
+  <!-- Scripts -->
+  <script src="tavern-parser.js"></script>
+  <script src="deepseek-api.js"></script>
+  <script src="app.js"></script>
+</body>
+</html>
