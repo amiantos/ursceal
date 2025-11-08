@@ -83,7 +83,3 @@ All data stored as plain JSON/text files in `/data`:
 - **Settings**: `settings.json`
 
 Backup = copy the `/data` folder.
-
-## License
-
-MIT
