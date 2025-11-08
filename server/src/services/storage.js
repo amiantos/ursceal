@@ -31,6 +31,7 @@ export class StorageService {
         await this.writeJSON(this.settingsFile, {
           apiKey: '',
           maxTokens: 4000,
+          temperature: 1.5,
           showReasoning: false,
           autoSave: true,
           showPrompt: false,

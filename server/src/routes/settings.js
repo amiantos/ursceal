@@ -29,6 +29,7 @@ router.put('/', asyncHandler(async (req, res) => {
   const {
     apiKey,
     maxTokens,
+    temperature,
     showReasoning,
     autoSave,
     showPrompt,
@@ -44,6 +45,7 @@ router.put('/', asyncHandler(async (req, res) => {
     ...current,
     ...(apiKey !== undefined && { apiKey }),
     ...(maxTokens !== undefined && { maxTokens: parseInt(maxTokens) || 4000 }),
+    ...(temperature !== undefined && { temperature: parseFloat(temperature) || 1.5 }),
     ...(showReasoning !== undefined && { showReasoning: Boolean(showReasoning) }),
     ...(autoSave !== undefined && { autoSave: Boolean(autoSave) }),
     ...(showPrompt !== undefined && { showPrompt: Boolean(showPrompt) }),

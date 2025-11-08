@@ -146,6 +146,7 @@ router.post('/', asyncHandler(async (req, res) => {
       allCharacterCards,
       persona,
       maxTokens: settings.maxTokens || 4000,
+      temperature: settings.temperature !== undefined ? settings.temperature : 1.5,
       settings,
     });
 

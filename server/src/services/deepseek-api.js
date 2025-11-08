@@ -243,6 +243,7 @@ export class DeepSeekAPI {
         messages: messages,
         stream: true,
         max_tokens: options.maxTokens || 4000,
+        temperature: options.temperature !== undefined ? options.temperature : 1.5,
       }),
       signal: controller.signal,
     });
@@ -346,6 +347,7 @@ export class DeepSeekAPI {
         messages: messages,
         stream: false,
         max_tokens: options.maxTokens || 4000,
+        temperature: options.temperature !== undefined ? options.temperature : 1.5,
       }),
     });
 

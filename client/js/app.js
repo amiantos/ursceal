@@ -125,6 +125,7 @@ class NovelWriterApp {
     this.settingsModal = document.getElementById('settingsModal');
     this.apiKeyInput = document.getElementById('apiKeyInput');
     this.maxTokensInput = document.getElementById('maxTokensInput');
+    this.temperatureInput = document.getElementById('temperatureInput');
     this.showReasoningToggle = document.getElementById('showReasoningToggle');
     this.autoSaveToggle = document.getElementById('autoSaveToggle');
     this.showPromptToggle = document.getElementById('showPromptToggle');
@@ -282,6 +283,7 @@ class NovelWriterApp {
       this.settings = settings || {
         apiKey: '',
         maxTokens: 4000,
+        temperature: 1.5,
         showReasoning: false,
         autoSave: true,
         showPrompt: false,
@@ -293,6 +295,7 @@ class NovelWriterApp {
       this.settings = {
         apiKey: '',
         maxTokens: 4000,
+        temperature: 1.5,
         showReasoning: false,
         autoSave: true,
         showPrompt: false,
@@ -869,6 +872,7 @@ class NovelWriterApp {
     if (this.settings) {
       this.apiKeyInput.value = this.settings.apiKey || '';
       this.maxTokensInput.value = this.settings.maxTokens || 4000;
+      this.temperatureInput.value = this.settings.temperature !== undefined ? this.settings.temperature : 1.5;
       this.showReasoningToggle.checked = this.settings.showReasoning || false;
       this.autoSaveToggle.checked = this.settings.autoSave !== false;
       this.showPromptToggle.checked = this.settings.showPrompt || false;
@@ -884,6 +888,7 @@ class NovelWriterApp {
     const settings = {
       apiKey: this.apiKeyInput.value.trim(),
       maxTokens: parseInt(this.maxTokensInput.value) || 4000,
+      temperature: parseFloat(this.temperatureInput.value) || 1.5,
       showReasoning: this.showReasoningToggle.checked,
       autoSave: this.autoSaveToggle.checked,
       showPrompt: this.showPromptToggle.checked,
