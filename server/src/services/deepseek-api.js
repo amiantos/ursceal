@@ -3,6 +3,8 @@
  * Handles communication with DeepSeek's reasoning model
  */
 
+import { MacroProcessor } from './macro-processor.js';
+
 export class DeepSeekAPI {
   constructor(apiKey) {
     this.apiKey = apiKey;
@@ -156,6 +158,12 @@ export class DeepSeekAPI {
     if (lorebookEntries && lorebookEntries.length > 0) {
       const filterAst = settings.filterAsterisks;
 
+      // Initialize macro processor with context
+      const macroProcessor = new MacroProcessor({
+        userName: persona?.name || 'User',
+        charName: characterCard?.data?.name || (allCharacterCards && allCharacterCards.length > 0 ? allCharacterCards[0].data?.name : 'Character')
+      });
+
       prompt += `\n=== WORLD INFORMATION ===\n\n`;
 
       lorebookEntries.forEach((entry, index) => {
@@ -166,8 +174,13 @@ export class DeepSeekAPI {
           prompt += `<!-- ${entry.comment} -->\n`;
         }
 
+        // Process macros in lorebook content
+        let content = entry.content;
+        content = macroProcessor.process(content);
+
         // Filter asterisks from lorebook content if enabled
-        const content = this.filterAsterisks(entry.content, filterAst);
+        content = this.filterAsterisks(content, filterAst);
+
         prompt += content;
       });
 
