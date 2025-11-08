@@ -99,6 +99,10 @@ class NovelWriterApp {
     this.personaSelectorGrid = document.getElementById('personaSelectorGrid');
     this.clearPersonaBtn = document.getElementById('clearPersonaBtn');
 
+    // Character response selector modal
+    this.characterResponseModal = document.getElementById('characterResponseModal');
+    this.characterResponseGrid = document.getElementById('characterResponseGrid');
+
 
     // Generation
     this.continueStoryBtn = document.getElementById('continueStoryBtn');
@@ -193,7 +197,7 @@ class NovelWriterApp {
       this.continueStoryBtn.addEventListener('click', () => this.generate('continue'));
     }
     if (this.characterResponseBtn) {
-      this.characterResponseBtn.addEventListener('click', () => this.generate('character'));
+      this.characterResponseBtn.addEventListener('click', () => this.handleCharacterResponse());
     }
     if (this.customPromptBtn) {
       this.customPromptBtn.addEventListener('click', () => this.openCustomPromptModal());
@@ -846,9 +850,65 @@ class NovelWriterApp {
 
   // ==================== Generation ====================
 
-  async generate(type) {
-    console.log('[App] Generate called with type:', type);
+  handleCharacterResponse() {
+    // If multiple characters, show selector modal
+    if (this.characters.length > 1) {
+      this.openCharacterResponseSelector();
+    } else if (this.characters.length === 1) {
+      // If only one character, generate with that character
+      this.generate('character', this.characters[0].id);
+    } else {
+      this.showToast('No characters in this story', 'error');
+    }
+  }
 
+  openCharacterResponseSelector() {
+    this.openModal(this.characterResponseModal);
+    this.renderCharacterResponseSelector();
+  }
+
+  renderCharacterResponseSelector() {
+    if (this.characters.length === 0) {
+      this.characterResponseGrid.innerHTML = '<p class="text-secondary">No characters in story</p>';
+      return;
+    }
+
+    this.characterResponseGrid.innerHTML = '';
+
+    this.characters.forEach(char => {
+      const card = document.createElement('div');
+      card.className = 'character-card';
+      card.style.cursor = 'pointer';
+
+      // Avatar
+      const avatar = document.createElement('div');
+      avatar.className = 'character-card-avatar';
+      avatar.style.fontSize = '2rem';
+      if (char.imageUrl) {
+        avatar.style.backgroundImage = `url(${char.imageUrl})`;
+      } else {
+        avatar.textContent = char.name.charAt(0).toUpperCase();
+      }
+
+      // Name
+      const name = document.createElement('div');
+      name.className = 'character-card-name';
+      name.textContent = char.name;
+      name.style.textAlign = 'center';
+
+      card.appendChild(avatar);
+      card.appendChild(name);
+
+      card.onclick = () => {
+        this.closeModal(this.characterResponseModal);
+        this.generate('character', char.id);
+      };
+
+      this.characterResponseGrid.appendChild(card);
+    });
+  }
+
+  async generate(type, characterId = null) {
     if (!this.currentStoryId) {
       this.showToast('Please create a story first', 'error');
       return;
@@ -864,8 +924,6 @@ class NovelWriterApp {
     await this.saveDocument();
 
     try {
-      console.log('[App] Starting generation UI updates');
-
       // Disable generation buttons
       this.setGenerationEnabled(false);
       this.generationStatus.classList.remove('hidden');
@@ -873,7 +931,6 @@ class NovelWriterApp {
 
       // Clear previous reasoning
       if (this.settings.showReasoning) {
-        console.log('[App] Showing reasoning panel');
         this.reasoningContent.innerHTML = '<div class="reasoning-empty">Thinking...</div>';
         this.showReasoning();
       }
@@ -887,11 +944,8 @@ class NovelWriterApp {
       const textBefore = this.editor.value.substring(0, cursorPos);
       const textAfter = this.editor.value.substring(cursorPos);
 
-      console.log('[App] Starting stream consumption...');
-
       // Stream generation from server
-      for await (const chunk of apiClient.generateStream(this.currentStoryId, type)) {
-        console.log('[App] Received chunk:', chunk);
+      for await (const chunk of apiClient.generateStream(this.currentStoryId, type, null, characterId)) {
         if (chunk.reasoning && this.settings.showReasoning) {
           reasoningText += chunk.reasoning;
           this.reasoningContent.innerHTML = this.formatReasoning(reasoningText);
@@ -936,13 +990,11 @@ class NovelWriterApp {
       // Save document
       await this.saveDocument();
 
-      console.log('[App] Generation complete!');
       this.showToast('Generation complete', 'success');
     } catch (error) {
-      console.error('[App] Generation error:', error);
+      console.error('Generation error:', error);
       this.showToast(`Generation failed: ${error.message}`, 'error');
     } finally {
-      console.log('[App] Cleaning up generation UI');
       this.setGenerationEnabled(true);
       this.generationStatus.classList.add('hidden');
     }

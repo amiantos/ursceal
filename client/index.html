@@ -296,6 +296,27 @@
     </div>
   </div>
 
+  <!-- Character Response Selector Modal -->
+  <div id="characterResponseModal" class="modal hidden">
+    <div class="modal-content" style="max-width: 600px;">
+      <div class="modal-header">
+        <h2>Which Character Should Respond?</h2>
+        <button class="close-btn">&times;</button>
+      </div>
+      <div class="modal-body">
+        <p style="margin-bottom: 1rem; color: var(--text-secondary); font-size: 0.875rem;">
+          Select which character should generate the next response.
+        </p>
+        <div id="characterResponseGrid" class="character-library-grid" style="grid-template-columns: repeat(auto-fill, minmax(150px, 1fr));">
+          <p class="text-secondary">Loading characters...</p>
+        </div>
+      </div>
+      <div class="modal-footer">
+        <button class="btn btn-secondary close-btn">Cancel</button>
+      </div>
+    </div>
+  </div>
+
   <!-- Persona Selector Modal -->
   <div id="personaSelectorModal" class="modal hidden">
     <div class="modal-content" style="max-width: 800px; max-height: 80vh;">

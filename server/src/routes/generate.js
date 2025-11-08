@@ -23,9 +23,7 @@ router.use((req, res, next) => {
 
 // Generate content (SSE streaming)
 router.post('/', asyncHandler(async (req, res) => {
-  const { storyId, type, customPrompt } = req.body;
-
-  console.log('[Generate] Request received:', { storyId, type, hasCustomPrompt: !!customPrompt });
+  const { storyId, type, customPrompt, characterId } = req.body;
 
   if (!storyId) {
     throw new AppError('Story ID is required', 400);
@@ -40,23 +38,13 @@ router.post('/', asyncHandler(async (req, res) => {
   }
 
   // Load settings
-  console.log('[Generate] Loading settings...');
   const settings = await storage.getSettings();
   if (!settings || !settings.apiKey) {
-    console.error('[Generate] No API key found');
     throw new AppError('DeepSeek API key not configured', 400);
   }
-  console.log('[Generate] API key loaded');
 
   // Load story
   const story = await storage.getStory(storyId);
-
-  console.log('[Generate] Story loaded:', {
-    id: story.id,
-    title: story.title,
-    characterCount: story.characterIds?.length || 0,
-    hasPersonaCharacter: !!story.personaCharacterId
-  });
 
   // Load persona (character only)
   let persona = null;
@@ -71,14 +59,10 @@ router.post('/', asyncHandler(async (req, res) => {
         description: cardData.data?.description || '',
         writingStyle: cardData.data?.personality || ''
       };
-
-      console.log('[Generate] Using character as persona:', persona.name);
     } catch (error) {
-      console.error('[Generate] Failed to load persona character:', error);
+      console.error('Failed to load persona character:', error);
       persona = null;
     }
-  } else {
-    console.log('[Generate] No persona set for this story');
   }
 
   // Load all characters for this story
@@ -86,19 +70,21 @@ router.post('/', asyncHandler(async (req, res) => {
   for (const charId of story.characterIds || []) {
     try {
       const cardData = await storage.getCharacter(charId);
-      characterCards.push(cardData);
-      console.log('[Generate] Loaded character:', cardData.data?.name || 'Unknown');
+      characterCards.push({ id: charId, data: cardData });
     } catch (error) {
-      console.error(`[Generate] Failed to load character ${charId}:`, error);
+      console.error(`Failed to load character ${charId}:`, error);
     }
   }
 
-  // For multi-character stories, use the first character for now
-  // TODO: Let user select which character for character-based generation
-  const characterCard = characterCards.length > 0 ? characterCards[0] : null;
-
-  if (characterCard) {
-    console.log('[Generate] Using character for generation:', characterCard.data?.name || 'Unknown');
+  // Select character for generation
+  let characterCard = null;
+  if (characterId) {
+    // Use specified character
+    const selectedChar = characterCards.find(c => c.id === characterId);
+    characterCard = selectedChar ? selectedChar.data : (characterCards.length > 0 ? characterCards[0].data : null);
+  } else {
+    // Default to first character
+    characterCard = characterCards.length > 0 ? characterCards[0].data : null;
   }
 
   // Initialize DeepSeek API
@@ -124,8 +110,6 @@ router.post('/', asyncHandler(async (req, res) => {
   // Flush headers immediately
   res.flushHeaders();
 
-  console.log('[Generate] SSE headers sent, starting generation...');
-
   try {
     // Start generation with streaming
     const { stream } = await deepseek.generateStreaming(fullPrompt, {
@@ -135,13 +119,8 @@ router.post('/', asyncHandler(async (req, res) => {
       settings,
     });
 
-    console.log('[Generate] Starting to consume DeepSeek stream...');
-    let chunkCount = 0;
-
     // Stream chunks to client
     for await (const chunk of stream) {
-      chunkCount++;
-
       const data = {
         reasoning: chunk.reasoning || null,
         content: chunk.content || null,
@@ -155,13 +134,7 @@ router.post('/', asyncHandler(async (req, res) => {
       if (res.flush) {
         res.flush();
       }
-
-      if (chunkCount % 10 === 0) {
-        console.log(`[Generate] Sent ${chunkCount} chunks...`);
-      }
     }
-
-    console.log(`[Generate] Generation complete. Total chunks: ${chunkCount}`);
 
     // Send done message
     res.write('data: [DONE]\n\n');
@@ -172,7 +145,7 @@ router.post('/', asyncHandler(async (req, res) => {
 
     res.end();
   } catch (error) {
-    console.error('[Generate] Generation error:', error);
+    console.error('Generation error:', error);
 
     // Send error as SSE
     res.write(`data: ${JSON.stringify({ error: error.message })}\n\n`);

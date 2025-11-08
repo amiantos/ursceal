@@ -199,19 +199,15 @@ class ApiClient {
    * Generate content with SSE streaming
    * Returns an async iterator for streaming chunks
    */
-  async* generateStream(storyId, type, customPrompt = null) {
-    console.log('[API] Starting generation:', { storyId, type, customPrompt });
-
+  async* generateStream(storyId, type, customPrompt = null, characterId = null) {
     const url = `${this.baseURL}/api/generate`;
     const response = await fetch(url, {
       method: 'POST',
       headers: {
         'Content-Type': 'application/json',
       },
-      body: JSON.stringify({ storyId, type, customPrompt }),
+      body: JSON.stringify({ storyId, type, customPrompt, characterId }),
     });
-
-    console.log('[API] Response status:', response.status);
 
     if (!response.ok) {
       const error = await response.json().catch(() => ({ error: response.statusText }));
@@ -225,16 +221,12 @@ class ApiClient {
     const reader = response.body.getReader();
     const decoder = new TextDecoder();
     let buffer = '';
-    let chunkCount = 0;
 
     try {
       while (true) {
         const { done, value } = await reader.read();
 
-        if (done) {
-          console.log('[API] Stream complete. Total chunks:', chunkCount);
-          break;
-        }
+        if (done) break;
 
         buffer += decoder.decode(value, { stream: true });
         const lines = buffer.split('\n');
@@ -255,31 +247,21 @@ class ApiClient {
               const data = JSON.parse(jsonStr);
 
               if (data.error) {
-                console.error('[API] Stream error:', data.error);
                 throw new Error(data.error);
               }
 
-              chunkCount++;
-              console.log('[API] Chunk', chunkCount, ':', {
-                hasReasoning: !!data.reasoning,
-                hasContent: !!data.content,
-                contentLength: data.content?.length || 0,
-                finished: data.finished
-              });
-
               yield data;
             } catch (e) {
-              console.error('[API] Failed to parse SSE line:', trimmed, e);
+              console.error('Failed to parse SSE line:', e);
             }
           }
         }
       }
     } catch (error) {
-      console.error('[API] Stream error:', error);
+      console.error('Stream error:', error);
       throw error;
     } finally {
       reader.releaseLock();
-      console.log('[API] Reader released');
     }
   }
 }
