@@ -501,6 +501,17 @@ class NovelWriterApp {
       this.currentStoryId = story.id;
       this.editor.value = '';
       this.characters = [];
+
+      // Auto-assign default persona if set
+      if (this.settings && this.settings.defaultPersonaId) {
+        try {
+          await apiClient.setStoryPersona(story.id, this.settings.defaultPersonaId);
+        } catch (error) {
+          console.error('Failed to auto-assign default persona:', error);
+          // Don't show error to user, just log it
+        }
+      }
+
       await this.loadCurrentStory();
       this.updateUI();
       this.showToast('Story created!', 'success');
@@ -937,19 +948,37 @@ class NovelWriterApp {
       desc.className = 'character-card-desc';
       desc.textContent = char.description || 'No description';
 
+      // Button container
+      const buttonContainer = document.createElement('div');
+      buttonContainer.style.display = 'flex';
+      buttonContainer.style.gap = '0.5rem';
+      buttonContainer.style.width = '100%';
+
       // Use as Persona button
       const useBtn = document.createElement('button');
       useBtn.className = 'btn btn-small btn-primary';
       useBtn.textContent = 'Use as Persona';
-      useBtn.style.width = '100%';
+      useBtn.style.flex = '1';
       useBtn.onclick = async () => {
         await this.setCharacterAsPersona(char.id);
       };
 
+      // Set as Default button
+      const defaultBtn = document.createElement('button');
+      defaultBtn.className = 'btn btn-small btn-secondary';
+      defaultBtn.textContent = 'Set as Default';
+      defaultBtn.style.flex = '1';
+      defaultBtn.onclick = async () => {
+        await this.setDefaultPersona(char.id);
+      };
+
+      buttonContainer.appendChild(useBtn);
+      buttonContainer.appendChild(defaultBtn);
+
       card.appendChild(avatar);
       card.appendChild(name);
       card.appendChild(desc);
-      card.appendChild(useBtn);
+      card.appendChild(buttonContainer);
 
       this.personaSelectorGrid.appendChild(card);
     });
@@ -982,6 +1011,25 @@ class NovelWriterApp {
     } catch (error) {
       console.error('Failed to clear persona:', error);
       this.showToast('Failed to clear persona: ' + error.message, 'error');
+    }
+  }
+
+  async setDefaultPersona(characterId) {
+    try {
+      // Get character name for toast message
+      const { character } = await apiClient.getCharacterData(characterId);
+      const characterName = character.data?.name || 'Character';
+
+      // Update settings with new default persona
+      await apiClient.updateSettings({ defaultPersonaId: characterId });
+
+      // Reload settings
+      await this.loadSettings();
+
+      this.showToast(`${characterName} set as default persona for new stories!`, 'success');
+    } catch (error) {
+      console.error('Failed to set default persona:', error);
+      this.showToast('Failed to set default persona: ' + error.message, 'error');
     }
   }
 
