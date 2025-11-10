@@ -156,7 +156,6 @@ router.post('/:id/characters', asyncHandler(async (req, res) => {
       let processed = characterCard.data.first_mes;
       processed = deepseek.replacePlaceholders(processed, characterCard, persona);
       processed = macroProcessor.process(processed);
-      processed = deepseek.filterAsterisks(processed, settings.filterAsterisks);
 
       processedFirstMessage = processed;
     }
@@ -219,7 +218,6 @@ router.get('/:id/characters/:characterId/greetings', asyncHandler(async (req, re
     let processed = characterCard.data.first_mes;
     processed = deepseek.replacePlaceholders(processed, characterCard, persona);
     processed = macroProcessor.process(processed);
-    processed = deepseek.filterAsterisks(processed, settings.filterAsterisks);
 
     greetings.push({
       index: 0,
@@ -235,7 +233,6 @@ router.get('/:id/characters/:characterId/greetings', asyncHandler(async (req, re
       let processed = greeting;
       processed = deepseek.replacePlaceholders(processed, characterCard, persona);
       processed = macroProcessor.process(processed);
-      processed = deepseek.filterAsterisks(processed, settings.filterAsterisks);
 
       greetings.push({
         index: idx + 1,
