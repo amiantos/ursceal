@@ -34,12 +34,12 @@ export class StorageService {
           apiKey: '',
           maxTokens: 4000,
           temperature: 1.5,
-          showReasoning: false,
+          showReasoning: true,
           autoSave: true,
-          showPrompt: false,
+          showPrompt: true,
           thirdPerson: true,
           filterAsterisks: true,
-          includeDialogueExamples: true,
+          includeDialogueExamples: false,
           // Lorebook settings
           lorebookScanDepth: 2000,     // Tokens to scan (approx 8000 chars)
           lorebookTokenBudget: 1800,   // Max tokens for lorebook content
