@@ -658,13 +658,12 @@ class NovelWriterApp {
       // Step 1: Import PNG to global library
       const result = await apiClient.importCharacter(file);
 
-      // Step 2: Add to current story
-      await apiClient.addCharacterToStory(this.currentStoryId, result.id);
+      // Step 2: Add to current story - server returns processed first message
+      const addCharResponse = await apiClient.addCharacterToStory(this.currentStoryId, result.id);
 
-      // Step 3: If story is empty and character has first message, populate it
-      if (!this.editor.value.trim() && result.firstMessage) {
-        const processedContent = this.replacePlaceholders(result.firstMessage, result.name);
-        this.editor.value = processedContent + '\n\n';
+      // Step 3: If story is empty and server returned processed first message, populate it
+      if (!this.editor.value.trim() && addCharResponse.processedFirstMessage) {
+        this.editor.value = addCharResponse.processedFirstMessage + '\n\n';
         await this.saveDocument();
       }
 
@@ -1003,26 +1002,22 @@ class NovelWriterApp {
     }
 
     try {
-      await apiClient.addCharacterToStory(this.currentStoryId, characterId);
+      // Add character - server returns processed first message
+      const response = await apiClient.addCharacterToStory(this.currentStoryId, characterId);
 
-      // Get character data for first message and lorebook
-      const { character } = await apiClient.getCharacterData(characterId);
-
-      // If story is empty and character has first message, populate it
-      if (!this.editor.value.trim()) {
+      // If story is empty and server returned processed first message, populate it
+      if (!this.editor.value.trim() && response.processedFirstMessage) {
         try {
-          if (character.data?.first_mes) {
-            const processedContent = this.replacePlaceholders(character.data.first_mes, character.data.name);
-            this.editor.value = processedContent + '\n\n';
-            await this.saveDocument();
-          }
+          this.editor.value = response.processedFirstMessage + '\n\n';
+          await this.saveDocument();
         } catch (error) {
-          console.error('Failed to load character first message:', error);
+          console.error('Failed to populate first message:', error);
           // Don't block the character add if this fails
         }
       }
 
-      // Check for associated lorebook
+      // Get character data for lorebook check
+      const { character } = await apiClient.getCharacterData(characterId);
       const lorebookId = character.data?.extensions?.ursceal_lorebook_id;
       if (lorebookId) {
         try {
@@ -1064,10 +1059,7 @@ class NovelWriterApp {
       this.stories.unshift(story);
       this.currentStoryId = story.id;
 
-      // Add character to story
-      await apiClient.addCharacterToStory(story.id, characterId);
-
-      // Add default persona if set
+      // Add default persona first (so it's used for processing first message)
       if (this.settings && this.settings.defaultPersonaId) {
         try {
           await apiClient.setStoryPersona(story.id, this.settings.defaultPersonaId);
@@ -1076,6 +1068,9 @@ class NovelWriterApp {
           // Don't block story creation if this fails
         }
       }
+
+      // Add character to story - server returns processed first message
+      const addCharResponse = await apiClient.addCharacterToStory(story.id, characterId);
 
       // Check for associated lorebook and add it
       const lorebookId = character.data?.extensions?.ursceal_lorebook_id;
@@ -1091,10 +1086,9 @@ class NovelWriterApp {
       // Load the new story first (this sets editor to empty content)
       await this.loadCurrentStory();
 
-      // Then populate first message with placeholder replacement
-      if (character.data?.first_mes) {
-        const processedContent = this.replacePlaceholders(character.data.first_mes, characterName);
-        this.editor.value = processedContent + '\n\n';
+      // Then populate with server-processed first message
+      if (addCharResponse.processedFirstMessage) {
+        this.editor.value = addCharResponse.processedFirstMessage + '\n\n';
         await this.saveDocument();
       }
 
@@ -2239,11 +2233,6 @@ Do NOT use first-person (I, me, my) or present tense.`;
     return escaped;
   }
 
-  filterAsterisks(text) {
-    if (!text || !this.settings?.filterAsterisks) return text;
-    return text.replace(/\*/g, '');
-  }
-
   // ==================== Document Operations ====================
 
   clearDocument() {
@@ -2283,37 +2272,24 @@ Do NOT use first-person (I, me, my) or present tense.`;
     }
 
     try {
-      // Collect all greetings from all characters
+      // Collect all greetings from all characters (server-processed)
       this.allGreetings = [];
 
       for (const char of this.characters) {
         try {
-          const cardData = await apiClient.getCharacter(char.id);
-          const characterName = cardData.data?.name || 'Unknown';
+          // Get processed greetings from server
+          const { greetings } = await apiClient.getStoryCharacterGreetings(this.currentStoryId, char.id);
 
-          // Add first_mes as greeting 0
-          if (cardData.data?.first_mes) {
+          // Add all processed greetings to the list
+          greetings.forEach(greeting => {
             this.allGreetings.push({
               characterId: char.id,
-              characterName,
-              greetingIndex: 0,
-              label: 'First Message',
-              content: cardData.data.first_mes
+              characterName: greeting.characterName,
+              greetingIndex: greeting.index,
+              label: greeting.label,
+              content: greeting.content // Already processed server-side
             });
-          }
-
-          // Add alternate_greetings
-          if (cardData.data?.alternate_greetings && cardData.data.alternate_greetings.length > 0) {
-            cardData.data.alternate_greetings.forEach((greeting, index) => {
-              this.allGreetings.push({
-                characterId: char.id,
-                characterName,
-                greetingIndex: index + 1,
-                label: `Alternate Greeting ${index + 1}`,
-                content: greeting
-              });
-            });
-          }
+          });
         } catch (error) {
           console.error(`Failed to load greetings for character ${char.id}:`, error);
         }
@@ -2386,11 +2362,8 @@ Do NOT use first-person (I, me, my) or present tense.`;
     }
 
     try {
-      // Replace placeholders in greeting content
-      let processedContent = this.replacePlaceholders(greeting.content, greeting.characterName);
-
-      // Replace editor content and save
-      this.editor.value = processedContent + '\n\n';
+      // Content is already processed server-side
+      this.editor.value = greeting.content + '\n\n';
       await this.saveDocument();
 
       // Remove keyboard handler
@@ -2414,25 +2387,6 @@ Do NOT use first-person (I, me, my) or present tense.`;
 
   // ==================== Utility Functions ====================
 
-  /**
-   * Replace template placeholders in text
-   */
-  replacePlaceholders(text, characterName) {
-    if (!text) return text;
-
-    let result = text;
-
-    // Replace {{user}} with persona name
-    const userName = this.persona?.data?.name || 'User';
-    result = result.replace(/\{\{user\}\}/gi, userName);
-
-    // Replace {{char}} and {{character}} with character name
-    const charName = characterName || 'Character';
-    result = result.replace(/\{\{char\}\}/gi, charName);
-    result = result.replace(/\{\{character\}\}/gi, charName);
-
-    return result;
-  }
 
   // ==================== UI Management ====================
 

@@ -5,6 +5,8 @@
 import express from 'express';
 import { asyncHandler, AppError } from '../middleware/error-handler.js';
 import { StorageService } from '../services/storage.js';
+import { DeepSeekAPI } from '../services/deepseek-api.js';
+import { MacroProcessor } from '../services/macro-processor.js';
 
 const router = express.Router();
 
@@ -119,7 +121,52 @@ router.post('/:id/characters', asyncHandler(async (req, res) => {
   }
 
   await storage.addCharacterToStory(req.params.id, characterId);
-  res.json({ success: true });
+
+  // Load story for persona context
+  const story = await storage.getStory(req.params.id);
+
+  // Load persona if set
+  let persona = null;
+  if (story.personaCharacterId) {
+    try {
+      const personaCard = await storage.getCharacter(story.personaCharacterId);
+      persona = {
+        name: personaCard.data?.name || 'User',
+        description: personaCard.data?.description || ''
+      };
+    } catch (error) {
+      console.error('Failed to load persona:', error);
+    }
+  }
+
+  // Load character card and process first message
+  let processedFirstMessage = null;
+  try {
+    const characterCard = await storage.getCharacter(characterId);
+
+    if (characterCard.data?.first_mes) {
+      const settings = await storage.getSettings();
+      const deepseek = new DeepSeekAPI(settings.apiKey || 'dummy');
+      const macroProcessor = new MacroProcessor({
+        userName: persona?.name || 'User',
+        charName: characterCard.data?.name || 'Character'
+      });
+
+      let processed = characterCard.data.first_mes;
+      processed = deepseek.replacePlaceholders(processed, characterCard, persona);
+      processed = macroProcessor.process(processed);
+      processed = deepseek.filterAsterisks(processed, settings.filterAsterisks);
+
+      processedFirstMessage = processed;
+    }
+  } catch (error) {
+    console.error('Failed to process first message:', error);
+  }
+
+  res.json({
+    success: true,
+    processedFirstMessage
+  });
 }));
 
 // Remove character from story (doesn't delete character)
@@ -127,6 +174,78 @@ router.delete('/:id/characters/:characterId', asyncHandler(async (req, res) => {
   const { id: storyId, characterId } = req.params;
   await storage.removeCharacterFromStory(storyId, characterId);
   res.json({ success: true });
+}));
+
+// Get processed greetings for a character in story context
+router.get('/:id/characters/:characterId/greetings', asyncHandler(async (req, res) => {
+  const { id: storyId, characterId } = req.params;
+
+  // Load story for persona context
+  const story = await storage.getStory(storyId);
+
+  // Load persona if set
+  let persona = null;
+  if (story.personaCharacterId) {
+    try {
+      const personaCard = await storage.getCharacter(story.personaCharacterId);
+      persona = {
+        name: personaCard.data?.name || 'User',
+        description: personaCard.data?.description || ''
+      };
+    } catch (error) {
+      console.error('Failed to load persona:', error);
+    }
+  }
+
+  // Load character card
+  const characterCard = await storage.getCharacter(characterId);
+
+  // Load settings for filtering
+  const settings = await storage.getSettings();
+
+  // Initialize processors (API key not needed for text processing)
+  const deepseek = new DeepSeekAPI(settings.apiKey || 'dummy');
+  const macroProcessor = new MacroProcessor({
+    userName: persona?.name || 'User',
+    charName: characterCard.data?.name || 'Character'
+  });
+
+  // Process all greetings
+  const greetings = [];
+
+  // Add first_mes as first greeting
+  if (characterCard.data?.first_mes) {
+    let processed = characterCard.data.first_mes;
+    processed = deepseek.replacePlaceholders(processed, characterCard, persona);
+    processed = macroProcessor.process(processed);
+    processed = deepseek.filterAsterisks(processed, settings.filterAsterisks);
+
+    greetings.push({
+      index: 0,
+      label: 'First Message',
+      content: processed,
+      characterName: characterCard.data.name
+    });
+  }
+
+  // Add alternate greetings
+  if (characterCard.data?.alternate_greetings && Array.isArray(characterCard.data.alternate_greetings)) {
+    characterCard.data.alternate_greetings.forEach((greeting, idx) => {
+      let processed = greeting;
+      processed = deepseek.replacePlaceholders(processed, characterCard, persona);
+      processed = macroProcessor.process(processed);
+      processed = deepseek.filterAsterisks(processed, settings.filterAsterisks);
+
+      greetings.push({
+        index: idx + 1,
+        label: `Alternate Greeting ${idx + 1}`,
+        content: processed,
+        characterName: characterCard.data.name
+      });
+    });
+  }
+
+  res.json({ greetings });
 }));
 
 // Set story persona (use a character as persona)

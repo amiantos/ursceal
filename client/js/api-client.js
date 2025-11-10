@@ -192,6 +192,10 @@ class ApiClient {
     });
   }
 
+  async getStoryCharacterGreetings(storyId, characterId) {
+    return this.request(`/api/stories/${storyId}/characters/${characterId}/greetings`);
+  }
+
   // ==================== Settings ====================
 
   async getSettings() {
