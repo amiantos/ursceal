@@ -333,6 +333,15 @@ class NovelWriterApp {
       }
     });
 
+    // Close overflow menu when any menu item is clicked
+    if (this.toolbarOverflowMenu) {
+      this.toolbarOverflowMenu.addEventListener('click', (e) => {
+        if (e.target.classList.contains('overflow-menu-item') || e.target.closest('.overflow-menu-item')) {
+          this.toolbarOverflowMenu.classList.add('hidden');
+        }
+      });
+    }
+
     // Document controls
     if (this.saveBtn) {
       this.saveBtn.addEventListener('click', () => this.saveDocument());
@@ -1947,7 +1956,7 @@ Do NOT use first-person (I, me, my) or present tense.`;
     try {
       this.setGenerationEnabled(false);
       this.generationStatus.classList.remove('hidden');
-      this.statusText.textContent = 'Rewriting...';
+      this.statusText.textContent = 'Thinking...';
 
       // Clear previous reasoning
       if (this.settings.showReasoning) {
@@ -1980,7 +1989,7 @@ Do NOT use first-person (I, me, my) or present tense.`;
         if (chunk.content) {
           if (!hasContent) {
             hasContent = true;
-            this.statusText.textContent = 'Writing...';
+            this.statusText.textContent = 'Rewriting...';
           }
 
           const filteredContent = this.filterAsterisks(chunk.content);
