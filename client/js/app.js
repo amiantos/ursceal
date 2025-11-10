@@ -697,6 +697,16 @@ class NovelWriterApp {
         await this.saveDocument();
       }
 
+      // Update title if server changed it
+      if (addCharResponse.updatedTitle) {
+        if (this.currentStory) {
+          this.currentStory.title = addCharResponse.updatedTitle;
+        }
+        if (this.titleDisplay) {
+          this.titleDisplay.textContent = addCharResponse.updatedTitle;
+        }
+      }
+
       // Reload characters
       await this.loadCharacters();
       this.showToast(`Character "${result.name}" added to story!`, 'success');
@@ -1046,6 +1056,16 @@ class NovelWriterApp {
         }
       }
 
+      // Update title if server changed it
+      if (response.updatedTitle) {
+        if (this.currentStory) {
+          this.currentStory.title = response.updatedTitle;
+        }
+        if (this.titleDisplay) {
+          this.titleDisplay.textContent = response.updatedTitle;
+        }
+      }
+
       // Get character data for lorebook check
       const { character } = await apiClient.getCharacterData(characterId);
       const lorebookId = character.data?.extensions?.ursceal_lorebook_id;
@@ -1101,6 +1121,11 @@ class NovelWriterApp {
 
       // Add character to story - server returns processed first message
       const addCharResponse = await apiClient.addCharacterToStory(story.id, characterId);
+
+      // Update title if server changed it
+      if (addCharResponse.updatedTitle) {
+        story.title = addCharResponse.updatedTitle;
+      }
 
       // Check for associated lorebook and add it
       const lorebookId = character.data?.extensions?.ursceal_lorebook_id;

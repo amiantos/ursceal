@@ -36,6 +36,19 @@ router.post('/', asyncHandler(async (req, res) => {
   }
 
   const story = await storage.createStory(title.trim(), description?.trim() || '');
+
+  // Auto-assign default persona if set in settings
+  try {
+    const settings = await storage.getSettings();
+    if (settings && settings.defaultPersonaId) {
+      await storage.setStoryPersona(story.id, settings.defaultPersonaId);
+      story.personaCharacterId = settings.defaultPersonaId;
+    }
+  } catch (error) {
+    console.error('Failed to auto-assign default persona:', error);
+    // Don't fail story creation if this fails
+  }
+
   res.status(201).json({ story });
 }));
 
@@ -142,8 +155,18 @@ router.post('/:id/characters', asyncHandler(async (req, res) => {
 
   // Load character card and process first message
   let processedFirstMessage = null;
+  let updatedTitle = null;
   try {
     const characterCard = await storage.getCharacter(characterId);
+
+    // Update story title if it's still "Untitled Story"
+    if (story.title === 'Untitled Story' && characterCard.data?.name) {
+      const newTitle = `Story with ${characterCard.data.name}`;
+      await storage.updateStoryMetadata(req.params.id, {
+        title: newTitle
+      });
+      updatedTitle = newTitle;
+    }
 
     if (characterCard.data?.first_mes) {
       const settings = await storage.getSettings();
@@ -165,7 +188,8 @@ router.post('/:id/characters', asyncHandler(async (req, res) => {
 
   res.json({
     success: true,
-    processedFirstMessage
+    processedFirstMessage,
+    updatedTitle
   });
 }));
 

@@ -215,15 +215,28 @@ export class StorageService {
       throw new Error(`Story not found: ${storyId}`);
     }
 
-    // Write content
-    await fs.writeFile(contentPath, content, 'utf8');
+    // Read existing content to check if it changed
+    let existingContent = '';
+    if (await this.exists(contentPath)) {
+      existingContent = await fs.readFile(contentPath, 'utf8');
+    }
 
-    // Update modified timestamp
+    // Only save if content actually changed
+    if (existingContent !== content) {
+      // Write content
+      await fs.writeFile(contentPath, content, 'utf8');
+
+      // Update modified timestamp
+      const metadata = await this.readJSON(metadataPath);
+      metadata.modified = new Date().toISOString();
+      await this.writeJSON(metadataPath, metadata);
+
+      return { success: true, modified: metadata.modified, changed: true };
+    }
+
+    // Content unchanged, return existing metadata
     const metadata = await this.readJSON(metadataPath);
-    metadata.modified = new Date().toISOString();
-    await this.writeJSON(metadataPath, metadata);
-
-    return { success: true, modified: metadata.modified };
+    return { success: true, modified: metadata.modified, changed: false };
   }
 
   /**
