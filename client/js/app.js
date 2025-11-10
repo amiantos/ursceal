@@ -2008,6 +2008,9 @@ class NovelWriterApp {
         const newCursorPos = textBefore.length + generatedContent.length;
         this.editor.selectionStart = newCursorPos;
         this.editor.selectionEnd = newCursorPos;
+
+        // Scroll to bottom and focus
+        this.editor.scrollTop = this.editor.scrollHeight;
         this.editor.focus();
       }
 
@@ -2101,6 +2104,9 @@ class NovelWriterApp {
         const newCursorPos = textBefore.length + generatedContent.length;
         this.editor.selectionStart = newCursorPos;
         this.editor.selectionEnd = newCursorPos;
+
+        // Scroll to bottom and focus
+        this.editor.scrollTop = this.editor.scrollHeight;
         this.editor.focus();
       }
 
@@ -2200,6 +2206,9 @@ Do NOT use first-person (I, me, my) or present tense.`;
           break;
         }
       }
+
+      // Focus editor after rewrite
+      this.editor.focus();
 
       await this.saveDocument();
       this.showToast('Rewrite complete', 'success');
@@ -2560,6 +2569,14 @@ Do NOT use first-person (I, me, my) or present tense.`;
 
   showReasoning() {
     this.reasoningPanel.classList.remove('hidden');
+
+    // Scroll editor to bottom and focus after panel opens
+    setTimeout(() => {
+      if (this.editor) {
+        this.editor.scrollTop = this.editor.scrollHeight;
+        this.editor.focus();
+      }
+    }, 100);
   }
 
   hideReasoning() {
