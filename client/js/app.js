@@ -643,7 +643,8 @@ class NovelWriterApp {
 
       // Step 3: If story is empty and character has first message, populate it
       if (!this.editor.value.trim() && result.firstMessage) {
-        this.editor.value = result.firstMessage + '\n\n';
+        const processedContent = this.replacePlaceholders(result.firstMessage, result.name);
+        this.editor.value = processedContent + '\n\n';
         await this.saveDocument();
       }
 
@@ -947,7 +948,8 @@ class NovelWriterApp {
         try {
           const { character } = await apiClient.getCharacterData(characterId);
           if (character.data?.first_mes) {
-            this.editor.value = character.data.first_mes + '\n\n';
+            const processedContent = this.replacePlaceholders(character.data.first_mes, character.data.name);
+            this.editor.value = processedContent + '\n\n';
             await this.saveDocument();
           }
         } catch (error) {
