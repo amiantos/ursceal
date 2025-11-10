@@ -85,11 +85,9 @@ router.post('/import', upload.single('character'), asyncHandler(async (req, res)
   try {
     const cardData = await CharacterParser.parseCard(req.file.buffer);
 
-    // Save character data as JSON and image separately
-    await storage.saveCharacter(characterId, cardData, req.file.buffer);
-
     // Check for embedded lorebook (V2 character cards)
     let embeddedLorebook = null;
+    let lorebookId = null;
     if (cardData.data?.character_book && cardData.data.character_book.entries && cardData.data.character_book.entries.length > 0) {
       try {
         // Parse embedded lorebook
@@ -100,7 +98,7 @@ router.post('/import', upload.single('character'), asyncHandler(async (req, res)
         lorebookData.description = lorebookData.description || `Lorebook for ${cardData.data.name}`;
 
         // Save to global lorebook library
-        const lorebookId = uuidv4();
+        lorebookId = uuidv4();
         await storage.saveLorebook(lorebookId, lorebookData);
 
         embeddedLorebook = {
@@ -114,6 +112,15 @@ router.post('/import', upload.single('character'), asyncHandler(async (req, res)
         console.error('Failed to parse embedded lorebook:', error);
       }
     }
+
+    // Add lorebook association to character data
+    if (!cardData.data.extensions) {
+      cardData.data.extensions = {};
+    }
+    cardData.data.extensions.ursceal_lorebook_id = lorebookId;
+
+    // Save character data as JSON and image separately
+    await storage.saveCharacter(characterId, cardData, req.file.buffer);
 
     res.status(201).json({
       id: characterId,
@@ -253,6 +260,36 @@ router.post('/import-url', asyncHandler(async (req, res) => {
 
     const characterId = uuidv4();
 
+    // Check for embedded lorebook
+    let embeddedLorebook = null;
+    let lorebookId = null;
+    if (characterData.data?.character_book && characterData.data.character_book.entries && characterData.data.character_book.entries.length > 0) {
+      try {
+        const lorebookData = LorebookParser.parseEmbeddedLorebook(characterData.data.character_book);
+        lorebookData.name = `${characterData.data.name}'s Lorebook`;
+        lorebookData.description = lorebookData.description || `Lorebook for ${characterData.data.name}`;
+
+        lorebookId = uuidv4();
+        await storage.saveLorebook(lorebookId, lorebookData);
+
+        embeddedLorebook = {
+          id: lorebookId,
+          name: lorebookData.name,
+          entryCount: lorebookData.entries.length
+        };
+
+        console.log(`Extracted embedded lorebook from ${characterData.data.name}: ${lorebookData.entries.length} entries`);
+      } catch (error) {
+        console.error('Failed to parse embedded lorebook:', error);
+      }
+    }
+
+    // Add lorebook association to character data
+    if (!characterData.data.extensions) {
+      characterData.data.extensions = {};
+    }
+    characterData.data.extensions.ursceal_lorebook_id = lorebookId;
+
     // Save character with image
     await storage.saveCharacter(characterId, characterData, imageBuffer);
 
@@ -264,6 +301,7 @@ router.post('/import-url', asyncHandler(async (req, res) => {
       description: characterData.data.description,
       imageUrl: hasImage ? `/api/characters/${characterId}/image` : null,
       firstMessage: characterData.data.first_mes,
+      embeddedLorebook: embeddedLorebook,
     });
   } catch (error) {
     throw new AppError(`Failed to import character: ${error.message}`, 400);
@@ -295,7 +333,7 @@ router.get('/:characterId/data', asyncHandler(async (req, res) => {
 // Update character data
 router.put('/:characterId', asyncHandler(async (req, res) => {
   const { characterId } = req.params;
-  const { name, description, personality, scenario, first_mes, mes_example, system_prompt } = req.body;
+  const { name, description, personality, scenario, first_mes, mes_example, system_prompt, ursceal_lorebook_id } = req.body;
 
   // Get existing character data
   const existingData = await storage.getCharacter(characterId);
@@ -308,6 +346,14 @@ router.put('/:characterId', asyncHandler(async (req, res) => {
   if (first_mes !== undefined) existingData.data.first_mes = first_mes.trim();
   if (mes_example !== undefined) existingData.data.mes_example = mes_example.trim();
   if (system_prompt !== undefined) existingData.data.system_prompt = system_prompt.trim();
+
+  // Update lorebook association
+  if (ursceal_lorebook_id !== undefined) {
+    if (!existingData.data.extensions) {
+      existingData.data.extensions = {};
+    }
+    existingData.data.extensions.ursceal_lorebook_id = ursceal_lorebook_id || null;
+  }
 
   // Save updated data (keep existing image)
   await storage.saveCharacter(characterId, existingData, null);
@@ -339,7 +385,7 @@ router.put('/:characterId/update-with-image', upload.single('image'), asyncHandl
   const existingData = await storage.getCharacter(characterId);
 
   // Update fields
-  const { name, description, personality, scenario, first_mes, mes_example, system_prompt } = parsedData;
+  const { name, description, personality, scenario, first_mes, mes_example, system_prompt, ursceal_lorebook_id } = parsedData;
 
   if (name !== undefined) existingData.data.name = name.trim();
   if (description !== undefined) existingData.data.description = description.trim();
@@ -348,6 +394,14 @@ router.put('/:characterId/update-with-image', upload.single('image'), asyncHandl
   if (first_mes !== undefined) existingData.data.first_mes = first_mes.trim();
   if (mes_example !== undefined) existingData.data.mes_example = mes_example.trim();
   if (system_prompt !== undefined) existingData.data.system_prompt = system_prompt.trim();
+
+  // Update lorebook association
+  if (ursceal_lorebook_id !== undefined) {
+    if (!existingData.data.extensions) {
+      existingData.data.extensions = {};
+    }
+    existingData.data.extensions.ursceal_lorebook_id = ursceal_lorebook_id || null;
+  }
 
   // Save updated data with new image
   const imageBuffer = req.file ? req.file.buffer : null;

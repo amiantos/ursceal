@@ -95,6 +95,7 @@ class NovelWriterApp {
     this.charMesExampleInput = document.getElementById('charMesExampleInput');
     this.charSystemPromptInput = document.getElementById('charSystemPromptInput');
     this.charPostHistoryInput = document.getElementById('charPostHistoryInput');
+    this.charLorebookSelect = document.getElementById('charLorebookSelect');
     this.saveCharacterBtn = document.getElementById('saveCharacterBtn');
 
     // Persona
@@ -728,6 +729,13 @@ class NovelWriterApp {
       this.charSystemPromptInput.value = data.system_prompt || '';
       this.charPostHistoryInput.value = data.post_history_instructions || '';
 
+      // Populate lorebook dropdown
+      await this.populateLorebookSelector();
+
+      // Set selected lorebook if any
+      const lorebookId = data.extensions?.ursceal_lorebook_id || '';
+      this.charLorebookSelect.value = lorebookId;
+
       // Close library modal to prevent overlap
       this.closeModal(this.characterLibraryModal);
 
@@ -735,6 +743,23 @@ class NovelWriterApp {
     } catch (error) {
       console.error('Failed to load character for editing:', error);
       this.showToast('Failed to load character', 'error');
+    }
+  }
+
+  async populateLorebookSelector() {
+    try {
+      const { lorebooks } = await apiClient.listAllLorebooks();
+      this.charLorebookSelect.innerHTML = '<option value="">No lorebook</option>';
+
+      lorebooks.forEach(lb => {
+        const option = document.createElement('option');
+        option.value = lb.id;
+        option.textContent = lb.name;
+        this.charLorebookSelect.appendChild(option);
+      });
+    } catch (error) {
+      console.error('Failed to load lorebooks:', error);
+      this.charLorebookSelect.innerHTML = '<option value="">No lorebook</option>';
     }
   }
 
@@ -747,6 +772,7 @@ class NovelWriterApp {
       first_mes: this.charFirstMesInput.value.trim(),
       mes_example: this.charMesExampleInput.value.trim(),
       system_prompt: this.charSystemPromptInput.value.trim(),
+      ursceal_lorebook_id: this.charLorebookSelect.value || null,
     };
 
     if (!characterData.name) {
@@ -949,10 +975,12 @@ class NovelWriterApp {
     try {
       await apiClient.addCharacterToStory(this.currentStoryId, characterId);
 
+      // Get character data for first message and lorebook
+      const { character } = await apiClient.getCharacterData(characterId);
+
       // If story is empty and character has first message, populate it
       if (!this.editor.value.trim()) {
         try {
-          const { character } = await apiClient.getCharacterData(characterId);
           if (character.data?.first_mes) {
             const processedContent = this.replacePlaceholders(character.data.first_mes, character.data.name);
             this.editor.value = processedContent + '\n\n';
@@ -964,8 +992,27 @@ class NovelWriterApp {
         }
       }
 
+      // Check for associated lorebook
+      const lorebookId = character.data?.extensions?.ursceal_lorebook_id;
+      if (lorebookId) {
+        try {
+          // Check if lorebook still exists
+          const { lorebook } = await apiClient.getLorebook(lorebookId);
+          if (lorebook) {
+            await apiClient.addLorebookToStory(this.currentStoryId, lorebookId);
+            this.showToast(`Character and lorebook "${lorebook.name}" added!`, 'success');
+            await this.loadStoryLorebooks();
+          }
+        } catch (error) {
+          console.error('Failed to auto-add lorebook:', error);
+          // Continue even if lorebook add fails
+          this.showToast('Character added to story!', 'success');
+        }
+      } else {
+        this.showToast('Character added to story!', 'success');
+      }
+
       await this.loadCharacters();
-      this.showToast('Character added to story!', 'success');
     } catch (error) {
       console.error('Failed to add character to story:', error);
       this.showToast('Failed to add character: ' + error.message, 'error');
@@ -997,6 +1044,17 @@ class NovelWriterApp {
         } catch (error) {
           console.error('Failed to auto-assign default persona:', error);
           // Don't block story creation if this fails
+        }
+      }
+
+      // Check for associated lorebook and add it
+      const lorebookId = character.data?.extensions?.ursceal_lorebook_id;
+      if (lorebookId) {
+        try {
+          await apiClient.addLorebookToStory(story.id, lorebookId);
+        } catch (error) {
+          console.error('Failed to auto-add lorebook:', error);
+          // Continue even if lorebook add fails
         }
       }
 
