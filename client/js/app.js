@@ -837,9 +837,17 @@ class NovelWriterApp {
       actions.style.gridTemplateColumns = '1fr 1fr';
       actions.style.gap = '0.5rem';
 
+      const newStoryBtn = document.createElement('button');
+      newStoryBtn.className = 'btn btn-small btn-primary';
+      newStoryBtn.textContent = 'New Story';
+      newStoryBtn.onclick = async (e) => {
+        e.stopPropagation();
+        await this.createStoryWithCharacter(char.id);
+      };
+
       const addBtn = document.createElement('button');
-      addBtn.className = 'btn btn-small btn-primary';
-      addBtn.textContent = 'Add';
+      addBtn.className = 'btn btn-small btn-secondary';
+      addBtn.textContent = 'Add to Story';
       addBtn.onclick = async (e) => {
         e.stopPropagation();
         await this.addExistingCharacterToStory(char.id);
@@ -853,25 +861,23 @@ class NovelWriterApp {
         await this.openCharacterEditor(char.id);
       };
 
-      actions.appendChild(addBtn);
-      actions.appendChild(editBtn);
-
-      // Delete button (full width, below other buttons)
       const deleteBtn = document.createElement('button');
       deleteBtn.className = 'btn btn-small btn-secondary';
       deleteBtn.textContent = 'Delete';
-      deleteBtn.style.gridColumn = '1 / -1';
-      deleteBtn.style.marginTop = '0.25rem';
       deleteBtn.onclick = async (e) => {
         e.stopPropagation();
         await this.deleteCharacterFromLibrary(char.id);
       };
 
+      actions.appendChild(newStoryBtn);
+      actions.appendChild(addBtn);
+      actions.appendChild(editBtn);
+      actions.appendChild(deleteBtn);
+
       card.appendChild(avatar);
       card.appendChild(name);
       card.appendChild(desc);
       card.appendChild(actions);
-      card.appendChild(deleteBtn);
 
       this.characterLibraryGrid.appendChild(card);
     });
@@ -963,6 +969,56 @@ class NovelWriterApp {
     } catch (error) {
       console.error('Failed to add character to story:', error);
       this.showToast('Failed to add character: ' + error.message, 'error');
+    }
+  }
+
+  async createStoryWithCharacter(characterId) {
+    try {
+      // Get character data for story title and first message
+      const { character } = await apiClient.getCharacterData(characterId);
+      const characterName = character.data?.name || 'Character';
+
+      // Prompt for story title
+      const title = prompt(`Enter story title:`, `Story with ${characterName}`);
+      if (!title || !title.trim()) return;
+
+      // Create the story
+      const { story } = await apiClient.createStory(title.trim(), '');
+      this.stories.unshift(story);
+      this.currentStoryId = story.id;
+
+      // Add character to story
+      await apiClient.addCharacterToStory(story.id, characterId);
+
+      // Add default persona if set
+      if (this.settings && this.settings.defaultPersonaId) {
+        try {
+          await apiClient.setStoryPersona(story.id, this.settings.defaultPersonaId);
+        } catch (error) {
+          console.error('Failed to auto-assign default persona:', error);
+          // Don't block story creation if this fails
+        }
+      }
+
+      // Load the new story first (this sets editor to empty content)
+      await this.loadCurrentStory();
+
+      // Then populate first message with placeholder replacement
+      if (character.data?.first_mes) {
+        const processedContent = this.replacePlaceholders(character.data.first_mes, characterName);
+        this.editor.value = processedContent + '\n\n';
+        await this.saveDocument();
+      }
+
+      this.updateUI();
+
+      // Close the character library modal
+      this.closeModal(this.characterLibraryModal);
+
+      this.showToast(`Story "${title}" created with ${characterName}!`, 'success');
+    } catch (error) {
+      console.error('Failed to create story with character:', error);
+      this.showToast('Failed to create story: ' + error.message, 'error');
     }
   }
 
