@@ -97,6 +97,19 @@
 
     <!-- Main Content Area -->
     <main class="content-area">
+      <!-- Reasoning Panel (Toggleable) -->
+      <div id="reasoningPanel" class="reasoning-panel hidden">
+        <div class="reasoning-header">
+          <h3>Model Reasoning</h3>
+          <button id="closeReasoningBtn" class="icon-btn">
+            <i class="fa-solid fa-xmark"></i>
+          </button>
+        </div>
+        <div id="reasoningContent" class="reasoning-content">
+          <p class="reasoning-empty">No reasoning to display yet. Generate content to see how the model thinks.</p>
+        </div>
+      </div>
+
       <!-- Editor -->
       <div class="editor-container">
         <textarea id="storyEditor" class="story-editor"
@@ -147,19 +160,6 @@
         <div id="generationStatus" class="generating-status hidden">
           <div class="spinner"></div>
           <span id="statusText">Thinking...</span>
-        </div>
-      </div>
-
-      <!-- Reasoning Panel (Toggleable) -->
-      <div id="reasoningPanel" class="reasoning-panel hidden">
-        <div class="reasoning-header">
-          <h3>Model Reasoning</h3>
-          <button id="closeReasoningBtn" class="icon-btn">
-            <i class="fa-solid fa-xmark"></i>
-          </button>
-        </div>
-        <div id="reasoningContent" class="reasoning-content">
-          <p class="reasoning-empty">No reasoning to display yet. Generate content to see how the model thinks.</p>
         </div>
       </div>
     </main>
