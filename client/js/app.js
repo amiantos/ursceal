@@ -78,7 +78,6 @@ class NovelWriterApp {
     this.characterInfo = document.getElementById('characterInfo');
     this.noCharacter = document.getElementById('noCharacter');
     this.characterName = document.getElementById('characterName');
-    this.characterDesc = document.getElementById('characterDesc');
     this.characterAvatar = document.getElementById('characterAvatar');
     this.characterUpload = document.getElementById('characterUpload');
     this.editCharacterBtn = document.getElementById('editCharacterBtn');
@@ -266,7 +265,7 @@ class NovelWriterApp {
       this.characterUpload.addEventListener('change', (e) => this.handleCharacterUpload(e));
     }
     if (this.editCharacterBtn) {
-      this.editCharacterBtn.addEventListener('click', () => this.openCharacterModal());
+      this.editCharacterBtn.addEventListener('click', () => this.editStoryCharacter());
     }
     if (this.clearCharacterBtn) {
       this.clearCharacterBtn.addEventListener('click', () => this.clearCharacter());
@@ -707,6 +706,17 @@ class NovelWriterApp {
       console.error('Failed to clear characters:', error);
       this.showToast('Failed to remove characters', 'error');
     }
+  }
+
+  async editStoryCharacter() {
+    if (!this.characters || this.characters.length === 0) {
+      this.showToast('No characters in this story', 'error');
+      return;
+    }
+
+    // Edit the first character
+    const char = this.characters[0];
+    await this.openCharacterEditor(char.id);
   }
 
   openCharacterCreator() {
@@ -2474,15 +2484,12 @@ Do NOT use first-person (I, me, my) or present tense.`;
 
       // Show first character info
       const char = this.characters[0];
-      this.characterName.textContent = char.name;
 
-      // Build description showing all characters
+      // Show character name with count if multiple
       if (this.characters.length === 1) {
-        this.characterDesc.textContent = char.description || 'No description';
+        this.characterName.textContent = char.name;
       } else {
-        // Show all character names
-        const allNames = this.characters.map(c => c.name).join(', ');
-        this.characterDesc.textContent = `${this.characters.length} characters: ${allNames}`;
+        this.characterName.textContent = `${char.name} (+${this.characters.length - 1} more)`;
       }
 
       // Display character avatar image

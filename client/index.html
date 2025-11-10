@@ -57,9 +57,11 @@
           <div class="character-avatar" id="characterAvatar"></div>
           <div class="character-details">
             <h3 id="characterName">No Character</h3>
-            <p id="characterDesc" class="character-desc"></p>
           </div>
-          <button id="clearCharacterBtn" class="btn btn-secondary">Remove All</button>
+          <div style="display: grid; grid-template-columns: 1fr 1fr; gap: 0.5rem; margin-top: 0.5rem;">
+            <button id="editCharacterBtn" class="btn btn-small btn-primary">Edit Character</button>
+            <button id="clearCharacterBtn" class="btn btn-small btn-secondary">Remove All</button>
+          </div>
         </div>
         <div id="noCharacter" class="no-character">
           <p>No characters in this story</p>
