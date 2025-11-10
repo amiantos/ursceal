@@ -941,6 +941,21 @@ class NovelWriterApp {
 
     try {
       await apiClient.addCharacterToStory(this.currentStoryId, characterId);
+
+      // If story is empty and character has first message, populate it
+      if (!this.editor.value.trim()) {
+        try {
+          const { character } = await apiClient.getCharacterData(characterId);
+          if (character.data?.first_mes) {
+            this.editor.value = character.data.first_mes + '\n\n';
+            await this.saveDocument();
+          }
+        } catch (error) {
+          console.error('Failed to load character first message:', error);
+          // Don't block the character add if this fails
+        }
+      }
+
       await this.loadCharacters();
       this.showToast('Character added to story!', 'success');
     } catch (error) {
