@@ -171,8 +171,31 @@ body {
   display: flex;
   align-items: center;
   justify-content: center;
+  position: relative;
+}
+
+.character-initial {
   color: var(--text-secondary);
   font-size: 3rem;
+}
+
+.character-name-overlay {
+  position: absolute;
+  bottom: 0;
+  right: 0;
+  left: 0;
+  padding: 0.5rem;
+  font-size: 0.875rem;
+  font-weight: 600;
+  color: var(--text-primary);
+  background: rgba(0, 0, 0, 0.7);
+  backdrop-filter: blur(4px);
+  border-bottom-left-radius: 8px;
+  border-bottom-right-radius: 8px;
+  margin: 0;
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
 }
 
 .character-details h3 {

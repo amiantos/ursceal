@@ -79,6 +79,7 @@ class NovelWriterApp {
     this.noCharacter = document.getElementById('noCharacter');
     this.characterName = document.getElementById('characterName');
     this.characterAvatar = document.getElementById('characterAvatar');
+    this.characterInitial = document.getElementById('characterInitial');
     this.characterUpload = document.getElementById('characterUpload');
     this.editCharacterBtn = document.getElementById('editCharacterBtn');
     this.clearCharacterBtn = document.getElementById('clearCharacterBtn');
@@ -2497,10 +2498,10 @@ Do NOT use first-person (I, me, my) or present tense.`;
         this.characterAvatar.style.backgroundImage = `url(${char.imageUrl})`;
         this.characterAvatar.style.backgroundSize = 'cover';
         this.characterAvatar.style.backgroundPosition = 'center';
-        this.characterAvatar.textContent = '';
+        this.characterInitial.textContent = '';
       } else {
         this.characterAvatar.style.backgroundImage = '';
-        this.characterAvatar.textContent = char.name.charAt(0).toUpperCase();
+        this.characterInitial.textContent = char.name.charAt(0).toUpperCase();
       }
     } else {
       this.characterInfo.classList.add('hidden');
