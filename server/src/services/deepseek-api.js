@@ -431,12 +431,12 @@ export class DeepSeekAPI {
     switch (type) {
       case "continue":
         instruction =
-          "Continue the story naturally from where it left off. Write the next 2-3 paragraphs, maintaining the established tone and style.";
+          "Continue the story naturally from where it left off. Write the next 2-3 paragraphs maximum, maintaining the established tone and style, write less if it makes sense stylistically or sets up a good response opportunity for other characters.";
         break;
 
       case "character":
         const charName = characterCard?.data?.name || "the character";
-        instruction = `Write the next part of the story from ${charName}'s perspective. Focus on their thoughts, actions, and dialogue. Write 2-3 paragraphs.`;
+        instruction = `Write the next part of the story from ${charName}'s perspective. Focus on their thoughts, actions, and dialogue. Write 2-3 paragraphs maximum, less if it makes sense stylistically or sets up a good response opportunity for other characters.`;
         break;
 
       case "custom":
