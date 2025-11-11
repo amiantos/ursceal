@@ -71,7 +71,7 @@ watch(() => props.reasoning, async () => {
   display: flex;
   justify-content: space-between;
   align-items: center;
-  padding: 0.75rem 2rem;
+  padding: 1rem 1.5rem;
   border-bottom: 1px solid var(--border-color);
 }
 
@@ -84,7 +84,10 @@ watch(() => props.reasoning, async () => {
 
 .reasoning-content {
   flex: 1;
-  padding: 1rem 2rem;
+  padding-top: 1rem;
+  padding-bottom: 1rem;
+  padding-left: max(2rem, calc((100% - 700px) / 2));
+  padding-right: max(2rem, calc((100% - 700px) / 2));
   overflow-y: auto;
   font-family: 'SF Mono', 'Monaco', 'Inconsolata', 'Fira Code', 'Fira Mono', 'Roboto Mono', 'Courier New', monospace;
   font-size: 0.875rem;

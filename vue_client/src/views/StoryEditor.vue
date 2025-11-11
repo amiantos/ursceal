@@ -487,7 +487,10 @@ function goBack() {
 .story-editor {
   width: 100%;
   height: 100%;
-  padding: 2rem;
+  padding-top: 2rem;
+  padding-bottom: 2rem;
+  padding-left: max(2rem, calc((100% - 700px) / 2));
+  padding-right: max(2rem, calc((100% - 700px) / 2));
   font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, "Helvetica Neue", Arial, sans-serif;
   font-size: 1rem;
   line-height: 1.8;
