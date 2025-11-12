@@ -221,12 +221,6 @@
 
       </div>
     </div>
-
-    <!-- Toast Notification -->
-    <div v-if="showToast" class="toast" :class="toastType">
-      <i :class="toastIcon"></i>
-      {{ toastMessage }}
-    </div>
   </div>
 </template>
 
@@ -234,18 +228,16 @@
 import { ref, watch, onMounted, nextTick } from 'vue'
 import { useRouter } from 'vue-router'
 import { settingsAPI } from '../services/api'
+import { useToast } from '../composables/useToast'
 
 const router = useRouter()
+const toast = useToast()
 
 // State
 const loading = ref(true)
 const saving = ref(false)
 const saveTimeout = ref(null)
 const isInitialLoad = ref(true)
-const showToast = ref(false)
-const toastMessage = ref('')
-const toastType = ref('success')
-const toastIcon = ref('fas fa-check')
 const originalApiKey = ref('')
 const apiKeyChanged = ref(false)
 const settings = ref({
@@ -336,25 +328,13 @@ async function saveSettings() {
   try {
     saving.value = true
     await settingsAPI.update(settings.value)
-    showToastNotification('Settings saved', 'success')
+    toast.success('Settings saved')
   } catch (error) {
     console.error('Failed to save settings:', error)
-    showToastNotification('Failed to save settings', 'error')
+    toast.error('Failed to save settings')
   } finally {
     saving.value = false
   }
-}
-
-function showToastNotification(message, type = 'success') {
-  toastMessage.value = message
-  toastType.value = type
-  toastIcon.value = type === 'success' ? 'fas fa-check' : 'fas fa-exclamation-circle'
-  showToast.value = true
-
-  // Hide toast after 2 seconds
-  setTimeout(() => {
-    showToast.value = false
-  }, 2000)
 }
 
 function goBack() {
@@ -516,47 +496,5 @@ function goBack() {
   font-size: 0.8rem;
   color: var(--text-secondary);
   line-height: 1.4;
-}
-
-/* Toast Notification */
-.toast {
-  position: fixed;
-  bottom: 2rem;
-  right: 2rem;
-  padding: 1rem 1.5rem;
-  border-radius: 8px;
-  box-shadow: 0 4px 12px rgba(0, 0, 0, 0.3);
-  display: flex;
-  align-items: center;
-  gap: 0.75rem;
-  font-size: 0.9rem;
-  font-weight: 500;
-  z-index: 9999;
-  animation: slideIn 0.3s ease-out;
-}
-
-@keyframes slideIn {
-  from {
-    transform: translateY(100%);
-    opacity: 0;
-  }
-  to {
-    transform: translateY(0);
-    opacity: 1;
-  }
-}
-
-.toast.success {
-  background-color: #28a745;
-  color: white;
-}
-
-.toast.error {
-  background-color: #dc3545;
-  color: white;
-}
-
-.toast i {
-  font-size: 1.1rem;
 }
 </style>

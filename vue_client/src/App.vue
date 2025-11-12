@@ -1,11 +1,12 @@
 <template>
   <div id="app">
     <RouterView />
+    <ToastContainer />
   </div>
 </template>
 
 <script setup>
-// Router handles navigation automatically
+import ToastContainer from './components/ToastContainer.vue'
 </script>
 
 <style scoped>

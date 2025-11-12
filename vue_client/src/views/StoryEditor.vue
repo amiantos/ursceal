@@ -144,6 +144,7 @@
 import { ref, computed, onMounted, onUnmounted, watch, nextTick } from 'vue'
 import { useRouter } from 'vue-router'
 import { storiesAPI, charactersAPI, settingsAPI } from '../services/api'
+import { useToast } from '../composables/useToast'
 import ReasoningPanel from '../components/ReasoningPanel.vue'
 import CharacterResponseModal from '../components/CharacterResponseModal.vue'
 import GreetingSelectorModal from '../components/GreetingSelectorModal.vue'
@@ -158,6 +159,7 @@ const props = defineProps({
 })
 
 const router = useRouter()
+const toast = useToast()
 
 // State
 const story = ref(null)
@@ -263,7 +265,7 @@ async function saveStory(silent = false) {
     await storiesAPI.updateContent(props.storyId, content.value)
     originalContent.value = content.value
     if (!silent) {
-      showToast('Story saved')
+      toast.success('Story saved')
     }
   } catch (error) {
     console.error('Failed to save story:', error)
@@ -293,7 +295,7 @@ async function handleContinue() {
 
 function handleCharacterResponse() {
   if (storyCharacters.value.length === 0) {
-    showToast('No characters in this story')
+    toast.info('No characters in this story')
     return
   } else if (storyCharacters.value.length === 1) {
     // Only one character, generate directly
@@ -392,7 +394,7 @@ async function generate(isCustom, instruction, characterId) {
 
     // Save
     await saveStory(true)
-    showToast('Generation complete')
+    toast.success('Generation complete')
   } catch (error) {
     console.error('Generation error:', error)
     alert('Generation failed: ' + error.message)
@@ -405,7 +407,7 @@ async function selectGreeting(greeting) {
   content.value = greeting + '\n\n'
   await saveStory()
   showGreetingSelector.value = false
-  showToast('Greeting selected')
+  toast.success('Greeting selected')
 }
 
 async function rewriteToThirdPerson() {
@@ -485,7 +487,7 @@ async function rewriteToThirdPerson() {
 
     // Save
     await saveStory(true)
-    showToast('Rewrite complete')
+    toast.success('Rewrite complete')
   } catch (error) {
     console.error('Rewrite error:', error)
     alert('Rewrite failed: ' + error.message)
@@ -500,7 +502,7 @@ async function clearStory() {
   }
   content.value = ''
   await saveStory()
-  showToast('Story cleared')
+  toast.success('Story cleared')
 }
 
 function exportStory() {
@@ -511,12 +513,7 @@ function exportStory() {
   a.download = `${story.value?.title || 'story'}.txt`
   a.click()
   URL.revokeObjectURL(url)
-  showToast('Story exported')
-}
-
-function showToast(message) {
-  // Simple toast - could be enhanced with a proper toast component
-  console.log('Toast:', message)
+  toast.success('Story exported')
 }
 
 function goBack() {
