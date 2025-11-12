@@ -1,0 +1,24 @@
+{
+  "name": "ursceal",
+  "version": "2.0.0",
+  "description": "Úrscéal - AI-powered short story writing application",
+  "private": true,
+  "scripts": {
+    "dev": "concurrently \"npm run server:dev\" \"npm run client:dev\"",
+    "server:dev": "cd server && npm run dev",
+    "client:dev": "cd vue_client && npm run dev",
+    "build": "cd vue_client && npm run build",
+    "server:start": "cd server && npm start"
+  },
+  "devDependencies": {
+    "concurrently": "^9.1.2"
+  },
+  "keywords": [
+    "novel",
+    "writing",
+    "ai",
+    "deepseek"
+  ],
+  "author": "",
+  "license": "MIT"
+}
