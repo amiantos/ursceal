@@ -39,6 +39,13 @@
             <i class="fas" :class="isPersona(char.id) ? 'fa-user-minus' : 'fa-user-plus'"></i>
             {{ isPersona(char.id) ? 'Remove Persona' : 'Set Persona' }}
           </button>
+          <button
+            class="btn btn-small btn-secondary"
+            @click="goToDetails(char.id)"
+          >
+            <i class="fas fa-info-circle"></i>
+            Details
+          </button>
         </div>
       </div>
     </div>
@@ -53,6 +60,7 @@
 
 <script setup>
 import { ref, computed, onMounted } from 'vue'
+import { useRouter } from 'vue-router'
 import Modal from './Modal.vue'
 import CharacterCard from './CharacterCard.vue'
 import { charactersAPI, storiesAPI } from '../services/api'
@@ -67,6 +75,7 @@ const props = defineProps({
 
 const emit = defineEmits(['close', 'updated'])
 
+const router = useRouter()
 const toast = useToast()
 const loading = ref(true)
 const allCharacters = ref([])
@@ -95,21 +104,37 @@ async function loadCharacters() {
 }
 
 const filteredCharacters = computed(() => {
-  if (!filterText.value.trim()) {
-    return allCharacters.value
+  let characters = allCharacters.value
+
+  // Apply filter if there's search text
+  if (filterText.value.trim()) {
+    const searchTerm = filterText.value.toLowerCase()
+    characters = characters.filter(char => {
+      // Search by name
+      if (char.name?.toLowerCase().includes(searchTerm)) {
+        return true
+      }
+      // Search by tags
+      if (char.tags && Array.isArray(char.tags)) {
+        return char.tags.some(tag => tag.toLowerCase().includes(searchTerm))
+      }
+      return false
+    })
   }
 
-  const searchTerm = filterText.value.toLowerCase()
-  return allCharacters.value.filter(char => {
-    // Search by name
-    if (char.name?.toLowerCase().includes(searchTerm)) {
-      return true
-    }
-    // Search by tags
-    if (char.tags && Array.isArray(char.tags)) {
-      return char.tags.some(tag => tag.toLowerCase().includes(searchTerm))
-    }
-    return false
+  // Sort: selected characters first, then alphabetically
+  return [...characters].sort((a, b) => {
+    const aSelected = isCharacterInStory(a.id)
+    const bSelected = isCharacterInStory(b.id)
+
+    // If one is selected and the other isn't, selected comes first
+    if (aSelected && !bSelected) return -1
+    if (!aSelected && bSelected) return 1
+
+    // Both selected or both not selected, sort alphabetically
+    const nameA = (a.name || 'Unknown').toLowerCase()
+    const nameB = (b.name || 'Unknown').toLowerCase()
+    return nameA.localeCompare(nameB)
   })
 })
 
@@ -180,6 +205,11 @@ async function togglePersona(characterId) {
     actionInProgress.value = null
   }
 }
+
+function goToDetails(characterId) {
+  router.push(`/characters/${characterId}`)
+  emit('close')
+}
 </script>
 
 <style scoped>
@@ -242,6 +272,10 @@ async function togglePersona(characterId) {
   display: flex;
   flex-direction: column;
   gap: 0.5rem;
+}
+
+.character-actions .btn {
+  width: 100%;
 }
 
 .empty-state {
