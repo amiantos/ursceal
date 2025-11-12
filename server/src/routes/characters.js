@@ -84,6 +84,13 @@ router.get('/', asyncHandler(async (req, res) => {
     })
   );
 
+  // Sort characters alphabetically by name (case-insensitive)
+  charactersWithData.sort((a, b) => {
+    const nameA = (a.name || 'Unknown').toLowerCase();
+    const nameB = (b.name || 'Unknown').toLowerCase();
+    return nameA.localeCompare(nameB);
+  });
+
   res.json({ characters: charactersWithData });
 }));
 

@@ -52,6 +52,39 @@ export const storiesAPI = {
     })
   },
 
+  updateMetadata(storyId, updates) {
+    return request(`/stories/${storyId}`, {
+      method: 'PUT',
+      body: JSON.stringify(updates),
+    })
+  },
+
+  removeCharacterFromStory(storyId, characterId) {
+    return request(`/stories/${storyId}/characters/${characterId}`, {
+      method: 'DELETE',
+    })
+  },
+
+  addLorebookToStory(storyId, lorebookId) {
+    return request(`/stories/${storyId}/lorebooks`, {
+      method: 'POST',
+      body: JSON.stringify({ lorebookId }),
+    })
+  },
+
+  removeLorebookFromStory(storyId, lorebookId) {
+    return request(`/stories/${storyId}/lorebooks/${lorebookId}`, {
+      method: 'DELETE',
+    })
+  },
+
+  setPersona(storyId, characterId) {
+    return request(`/stories/${storyId}/persona`, {
+      method: 'PUT',
+      body: JSON.stringify({ characterId }),
+    })
+  },
+
   // Streaming generation
   async *continueStory(storyId, characterId = null) {
     const url = `${baseURL}/stories/${storyId}/continue${characterId ? `?characterId=${characterId}` : ''}`

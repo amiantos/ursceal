@@ -11,6 +11,34 @@
       <div class="header-right">
         <button
           class="icon-btn"
+          @click="showManageCharacters = true"
+          title="Manage Characters"
+        >
+          <i class="fas fa-user"></i>
+        </button>
+        <button
+          class="icon-btn"
+          @click="showManageLorebooks = true"
+          title="Manage Lorebooks"
+        >
+          <i class="fas fa-book"></i>
+        </button>
+        <button
+          class="icon-btn"
+          @click="showRenameStory = true"
+          title="Rename Story"
+        >
+          <i class="fas fa-pencil"></i>
+        </button>
+        <button
+          class="icon-btn"
+          @click="deleteStory"
+          title="Delete Story"
+        >
+          <i class="fas fa-trash"></i>
+        </button>
+        <button
+          class="icon-btn"
           @click="saveStory"
           :title="hasUnsavedChanges ? 'Save changes' : 'All changes saved'"
         >
@@ -144,6 +172,27 @@
       @close="showCustomPromptModal = false"
       @generate="handleCustomPrompt"
     />
+
+    <ManageCharactersModal
+      v-if="showManageCharacters"
+      :story="story"
+      @close="showManageCharacters = false"
+      @updated="handleStoryUpdated"
+    />
+
+    <ManageLorebooksModal
+      v-if="showManageLorebooks"
+      :story="story"
+      @close="showManageLorebooks = false"
+      @updated="handleStoryUpdated"
+    />
+
+    <RenameStoryModal
+      v-if="showRenameStory"
+      :story="story"
+      @close="showRenameStory = false"
+      @updated="handleStoryUpdated"
+    />
   </div>
 </template>
 
@@ -158,6 +207,9 @@ import CharacterResponseModal from '../components/CharacterResponseModal.vue'
 import GreetingSelectorModal from '../components/GreetingSelectorModal.vue'
 import ViewPromptModal from '../components/ViewPromptModal.vue'
 import CustomPromptModal from '../components/CustomPromptModal.vue'
+import ManageCharactersModal from '../components/ManageCharactersModal.vue'
+import ManageLorebooksModal from '../components/ManageLorebooksModal.vue'
+import RenameStoryModal from '../components/RenameStoryModal.vue'
 
 const props = defineProps({
   storyId: {
@@ -185,6 +237,9 @@ const showCharacterSelector = ref(false)
 const showGreetingSelector = ref(false)
 const showViewPromptModal = ref(false)
 const showCustomPromptModal = ref(false)
+const showManageCharacters = ref(false)
+const showManageLorebooks = ref(false)
+const showRenameStory = ref(false)
 const storyCharacters = ref([])
 const shouldShowReasoning = ref(false) // Setting from server
 
@@ -528,6 +583,27 @@ function exportStory() {
 
 function goToSettings() {
   router.push('/settings')
+}
+
+async function handleStoryUpdated() {
+  // Reload story data after changes from modals
+  await loadStory()
+  await loadCharacters()
+}
+
+async function deleteStory() {
+  if (!confirm(`Are you sure you want to delete "${story.value?.title}"? This cannot be undone.`)) {
+    return
+  }
+
+  try {
+    await storiesAPI.delete(props.storyId)
+    toast.success('Story deleted successfully')
+    router.push('/')
+  } catch (error) {
+    console.error('Failed to delete story:', error)
+    toast.error('Failed to delete story: ' + error.message)
+  }
 }
 </script>
 
