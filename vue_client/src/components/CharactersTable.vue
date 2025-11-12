@@ -65,6 +65,19 @@ const props = defineProps({
 
 defineEmits(['continue', 'new-story', 'edit', 'delete'])
 
+function getStoryCount(characterId) {
+  return props.stories.filter(story =>
+    story.characterIds?.includes(characterId) ||
+    story.personaCharacterId === characterId
+  ).length
+}
+
+function sortByStoryCount(aCharacter, bCharacter, asc) {
+  const aCount = getStoryCount(aCharacter.id)
+  const bCount = getStoryCount(bCharacter.id)
+  return asc ? aCount - bCount : bCount - aCount
+}
+
 const columns = [
   {
     key: 'avatar',
@@ -92,12 +105,7 @@ const columns = [
     label: 'Stories',
     sortable: true,
     cellClass: 'count-cell',
-    // Custom sort function to sort by story count
-    sortFn: (a, b, asc) => {
-      // Note: The actual value isn't used, we compute it in the template
-      // But we can sort by the computed value
-      return 0 // Will be sorted by the displayed value
-    }
+    sortFn: sortByStoryCount
   },
   {
     key: 'totalWords',
@@ -114,11 +122,4 @@ const columns = [
     headerClass: 'actions-col'
   }
 ]
-
-function getStoryCount(characterId) {
-  return props.stories.filter(story =>
-    story.characterIds?.includes(characterId) ||
-    story.personaCharacterId === characterId
-  ).length
-}
 </script>

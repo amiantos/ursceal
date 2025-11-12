@@ -91,7 +91,8 @@ const sortedData = computed(() => {
 
     // Use custom sort function if provided
     if (column?.sortFn) {
-      return column.sortFn(aVal, bVal, sortAsc.value)
+      // Pass the full row objects to the sort function
+      return column.sortFn(a, b, sortAsc.value)
     }
 
     // Handle null/undefined - push to end
