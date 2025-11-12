@@ -424,6 +424,7 @@
 import { ref, computed, onMounted, nextTick } from 'vue'
 import { useRouter } from 'vue-router'
 import { charactersAPI, lorebooksAPI } from '../services/api'
+import { useToast } from '../composables/useToast'
 import CharacterCard from '../components/CharacterCard.vue'
 
 const props = defineProps({
@@ -434,6 +435,7 @@ const props = defineProps({
 })
 
 const router = useRouter()
+const toast = useToast()
 
 // State
 const loading = ref(true)
@@ -512,7 +514,7 @@ async function loadCharacter() {
     await checkImageExists()
   } catch (error) {
     console.error('Failed to load character:', error)
-    alert('Failed to load character: ' + error.message)
+    toast.error('Failed to load character: ' + error.message)
   } finally {
     loading.value = false
   }
@@ -593,7 +595,7 @@ async function saveName() {
     editedName.value = ''
   } catch (error) {
     console.error('Failed to update name:', error)
-    alert('Failed to update name: ' + error.message)
+    toast.error('Failed to update name: ' + error.message)
   }
 }
 
@@ -607,7 +609,7 @@ async function saveDescription() {
     editedDescription.value = ''
   } catch (error) {
     console.error('Failed to update description:', error)
-    alert('Failed to update description: ' + error.message)
+    toast.error('Failed to update description: ' + error.message)
   }
 }
 
@@ -621,7 +623,7 @@ async function saveLorebook() {
     editedLorebookId.value = null
   } catch (error) {
     console.error('Failed to update lorebook association:', error)
-    alert('Failed to update lorebook association: ' + error.message)
+    toast.error('Failed to update lorebook association: ' + error.message)
   }
 }
 
@@ -635,7 +637,7 @@ async function savePersonality() {
     editedPersonality.value = ''
   } catch (error) {
     console.error('Failed to update personality:', error)
-    alert('Failed to update personality: ' + error.message)
+    toast.error('Failed to update personality: ' + error.message)
   }
 }
 
@@ -649,7 +651,7 @@ async function saveScenario() {
     editedScenario.value = ''
   } catch (error) {
     console.error('Failed to update scenario:', error)
-    alert('Failed to update scenario: ' + error.message)
+    toast.error('Failed to update scenario: ' + error.message)
   }
 }
 
@@ -663,7 +665,7 @@ async function saveDialogueExamples() {
     editedDialogueExamples.value = ''
   } catch (error) {
     console.error('Failed to update dialogue examples:', error)
-    alert('Failed to update dialogue examples: ' + error.message)
+    toast.error('Failed to update dialogue examples: ' + error.message)
   }
 }
 
@@ -677,7 +679,7 @@ async function saveFirstMessage() {
     editedFirstMessage.value = ''
   } catch (error) {
     console.error('Failed to update first message:', error)
-    alert('Failed to update first message: ' + error.message)
+    toast.error('Failed to update first message: ' + error.message)
   }
 }
 
@@ -727,7 +729,7 @@ async function saveImage() {
     }
   } catch (error) {
     console.error('Failed to update image:', error)
-    alert('Failed to update image: ' + error.message)
+    toast.error('Failed to update image: ' + error.message)
   }
 }
 
@@ -747,11 +749,11 @@ async function deleteCharacter() {
 
   try {
     await charactersAPI.delete(props.characterId)
-    alert('Character deleted successfully')
+    toast.success('Character deleted successfully')
     router.push('/')
   } catch (error) {
     console.error('Failed to delete character:', error)
-    alert('Failed to delete character: ' + error.message)
+    toast.error('Failed to delete character: ' + error.message)
   }
 }
 
@@ -822,7 +824,7 @@ async function saveAlternateGreeting() {
     editedGreeting.value = ''
   } catch (error) {
     console.error('Failed to save alternate greeting:', error)
-    alert('Failed to save alternate greeting: ' + error.message)
+    toast.error('Failed to save alternate greeting: ' + error.message)
   }
 }
 
@@ -841,7 +843,7 @@ async function deleteAlternateGreeting(index) {
     })
   } catch (error) {
     console.error('Failed to delete alternate greeting:', error)
-    alert('Failed to delete alternate greeting: ' + error.message)
+    toast.error('Failed to delete alternate greeting: ' + error.message)
   }
 }
 </script>

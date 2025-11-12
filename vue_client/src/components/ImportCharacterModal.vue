@@ -55,8 +55,10 @@
 import { ref } from 'vue'
 import Modal from './Modal.vue'
 import { charactersAPI } from '../services/api'
+import { useToast } from '../composables/useToast'
 
 const emit = defineEmits(['close', 'imported'])
+const toast = useToast()
 
 const selectedFile = ref(null)
 const fileInput = ref(null)
@@ -77,12 +79,12 @@ async function importFromPNG() {
     importing.value = true
     const result = await charactersAPI.importPNG(selectedFile.value)
 
-    alert(`Successfully imported "${result.name}"!`)
+    toast.success(`Successfully imported "${result.name}"!`)
     emit('imported', result)
     emit('close')
   } catch (error) {
     console.error('Failed to import PNG:', error)
-    alert('Failed to import character: ' + error.message)
+    toast.error('Failed to import character: ' + error.message)
   } finally {
     importing.value = false
   }
@@ -95,12 +97,12 @@ async function importFromURL() {
     importing.value = true
     const result = await charactersAPI.importFromURL(characterUrl.value.trim())
 
-    alert(`Successfully imported "${result.name}"!`)
+    toast.success(`Successfully imported "${result.name}"!`)
     emit('imported', result)
     emit('close')
   } catch (error) {
     console.error('Failed to import from URL:', error)
-    alert('Failed to import character: ' + error.message)
+    toast.error('Failed to import character: ' + error.message)
   } finally {
     importing.value = false
   }

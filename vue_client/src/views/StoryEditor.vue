@@ -225,7 +225,7 @@ async function loadStory() {
     originalContent.value = content.value
   } catch (error) {
     console.error('Failed to load story:', error)
-    alert('Failed to load story: ' + error.message)
+    toast.error('Failed to load story: ' + error.message)
   }
 }
 
@@ -270,7 +270,7 @@ async function saveStory(silent = false) {
   } catch (error) {
     console.error('Failed to save story:', error)
     if (!silent) {
-      alert('Failed to save story: ' + error.message)
+      toast.error('Failed to save story: ' + error.message)
     }
   }
 }
@@ -397,7 +397,7 @@ async function generate(isCustom, instruction, characterId) {
     toast.success('Generation complete')
   } catch (error) {
     console.error('Generation error:', error)
-    alert('Generation failed: ' + error.message)
+    toast.error('Generation failed: ' + error.message)
   } finally {
     generating.value = false
   }
@@ -490,7 +490,7 @@ async function rewriteToThirdPerson() {
     toast.success('Rewrite complete')
   } catch (error) {
     console.error('Rewrite error:', error)
-    alert('Rewrite failed: ' + error.message)
+    toast.error('Rewrite failed: ' + error.message)
   } finally {
     generating.value = false
   }

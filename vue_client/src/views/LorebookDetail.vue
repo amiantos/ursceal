@@ -178,6 +178,7 @@
 import { ref, computed, onMounted } from 'vue'
 import { useRouter } from 'vue-router'
 import { lorebooksAPI } from '../services/api'
+import { useToast } from '../composables/useToast'
 import EntryEditorModal from '../components/EntryEditorModal.vue'
 
 const props = defineProps({
@@ -188,6 +189,7 @@ const props = defineProps({
 })
 
 const router = useRouter()
+const toast = useToast()
 
 // State
 const loading = ref(true)
@@ -222,7 +224,7 @@ async function loadLorebook() {
     }
   } catch (error) {
     console.error('Failed to load lorebook:', error)
-    alert('Failed to load lorebook: ' + error.message)
+    toast.error('Failed to load lorebook: ' + error.message)
   } finally {
     loading.value = false
   }
@@ -268,7 +270,7 @@ async function saveName() {
     editedName.value = ''
   } catch (error) {
     console.error('Failed to update name:', error)
-    alert('Failed to update name: ' + error.message)
+    toast.error('Failed to update name: ' + error.message)
   }
 }
 
@@ -282,7 +284,7 @@ async function saveDescription() {
     editedDescription.value = ''
   } catch (error) {
     console.error('Failed to update description:', error)
-    alert('Failed to update description: ' + error.message)
+    toast.error('Failed to update description: ' + error.message)
   }
 }
 
@@ -293,11 +295,11 @@ async function deleteLorebook() {
 
   try {
     await lorebooksAPI.delete(props.lorebookId)
-    alert('Lorebook deleted successfully')
+    toast.success('Lorebook deleted successfully')
     router.push('/')
   } catch (error) {
     console.error('Failed to delete lorebook:', error)
-    alert('Failed to delete lorebook: ' + error.message)
+    toast.error('Failed to delete lorebook: ' + error.message)
   }
 }
 

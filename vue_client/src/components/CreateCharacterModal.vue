@@ -79,8 +79,10 @@
 import { ref, onMounted } from 'vue'
 import Modal from './Modal.vue'
 import { charactersAPI } from '../services/api'
+import { useToast } from '../composables/useToast'
 
 const emit = defineEmits(['close', 'created'])
+const toast = useToast()
 
 const characterName = ref('')
 const characterDescription = ref('')
@@ -113,12 +115,12 @@ async function createCharacter() {
 
     const result = await charactersAPI.create(data)
 
-    alert(`Successfully created "${result.name}"!`)
+    toast.success(`Successfully created "${result.name}"!`)
     emit('created', result)
     emit('close')
   } catch (error) {
     console.error('Failed to create character:', error)
-    alert('Failed to create character: ' + error.message)
+    toast.error('Failed to create character: ' + error.message)
   } finally {
     creating.value = false
   }

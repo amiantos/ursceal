@@ -47,9 +47,11 @@ import { ref, onMounted } from 'vue'
 import { useRouter } from 'vue-router'
 import Modal from './Modal.vue'
 import { lorebooksAPI } from '../services/api'
+import { useToast } from '../composables/useToast'
 
 const emit = defineEmits(['close', 'created'])
 const router = useRouter()
+const toast = useToast()
 
 const lorebookName = ref('')
 const lorebookDescription = ref('')
@@ -74,7 +76,7 @@ async function createLorebook() {
       lorebookDescription.value.trim()
     )
 
-    alert(`Successfully created "${result.name}"!`)
+    toast.success(`Successfully created "${result.name}"!`)
     emit('created', result)
     emit('close')
 
@@ -82,7 +84,7 @@ async function createLorebook() {
     router.push(`/lorebooks/${result.id}`)
   } catch (error) {
     console.error('Failed to create lorebook:', error)
-    alert('Failed to create lorebook: ' + error.message)
+    toast.error('Failed to create lorebook: ' + error.message)
   } finally {
     creating.value = false
   }

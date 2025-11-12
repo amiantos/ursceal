@@ -132,6 +132,7 @@
 import { ref, computed, onMounted, watch } from 'vue'
 import { useRouter } from 'vue-router'
 import { storiesAPI, charactersAPI, lorebooksAPI } from '../services/api'
+import { useToast } from '../composables/useToast'
 import Tabs from '../components/Tabs.vue'
 import StoriesTable from '../components/StoriesTable.vue'
 import CharactersTable from '../components/CharactersTable.vue'
@@ -142,6 +143,7 @@ import ImportCharacterModal from '../components/ImportCharacterModal.vue'
 import CreateLorebookModal from '../components/CreateLorebookModal.vue'
 
 const router = useRouter()
+const toast = useToast()
 
 const stories = ref([])
 const characters = ref([])
@@ -228,7 +230,7 @@ async function createNewStory() {
     openStory(story.id)
   } catch (error) {
     console.error('Error creating story:', error)
-    alert('Failed to create story')
+    toast.error('Failed to create story')
   }
 }
 
@@ -250,7 +252,7 @@ async function createStoryWithCharacter(characterId) {
     openStory(story.id)
   } catch (error) {
     console.error('Error creating story with character:', error)
-    alert('Failed to create story')
+    toast.error('Failed to create story')
   }
 }
 
@@ -282,10 +284,10 @@ async function deleteStory(story) {
   try {
     await storiesAPI.delete(story.id)
     stories.value = stories.value.filter(s => s.id !== story.id)
-    alert('Story deleted successfully')
+    toast.success('Story deleted successfully')
   } catch (error) {
     console.error('Error deleting story:', error)
-    alert('Failed to delete story')
+    toast.error('Failed to delete story')
   }
 }
 
@@ -306,10 +308,10 @@ async function deleteCharacter(character) {
   try {
     await charactersAPI.delete(character.id)
     characters.value = characters.value.filter(c => c.id !== character.id)
-    alert('Character deleted successfully')
+    toast.success('Character deleted successfully')
   } catch (error) {
     console.error('Error deleting character:', error)
-    alert('Failed to delete character: ' + error.message)
+    toast.error('Failed to delete character: ' + error.message)
   }
 }
 
@@ -321,10 +323,10 @@ async function deleteLorebook(lorebook) {
   try {
     await lorebooksAPI.delete(lorebook.id)
     lorebooks.value = lorebooks.value.filter(l => l.id !== lorebook.id)
-    alert('Lorebook deleted successfully')
+    toast.success('Lorebook deleted successfully')
   } catch (error) {
     console.error('Error deleting lorebook:', error)
-    alert('Failed to delete lorebook: ' + error.message)
+    toast.error('Failed to delete lorebook: ' + error.message)
   }
 }
 

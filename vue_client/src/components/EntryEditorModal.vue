@@ -198,6 +198,7 @@
 import { ref, computed, onMounted } from 'vue'
 import Modal from './Modal.vue'
 import { lorebooksAPI } from '../services/api'
+import { useToast } from '../composables/useToast'
 
 const props = defineProps({
   lorebookId: {
@@ -211,6 +212,7 @@ const props = defineProps({
 })
 
 const emit = defineEmits(['close', 'saved'])
+const toast = useToast()
 
 const commentInput = ref(null)
 const saving = ref(false)
@@ -305,16 +307,16 @@ async function saveEntry() {
 
     if (isNewEntry.value) {
       await lorebooksAPI.addEntry(props.lorebookId, entryData)
-      alert('Entry created successfully!')
+      toast.success('Entry created successfully!')
     } else {
       await lorebooksAPI.updateEntry(props.lorebookId, props.entry.id, entryData)
-      alert('Entry updated successfully!')
+      toast.success('Entry updated successfully!')
     }
 
     emit('saved')
   } catch (error) {
     console.error('Failed to save entry:', error)
-    alert('Failed to save entry: ' + error.message)
+    toast.error('Failed to save entry: ' + error.message)
   } finally {
     saving.value = false
   }
@@ -327,11 +329,11 @@ async function deleteEntry() {
 
   try {
     await lorebooksAPI.deleteEntry(props.lorebookId, props.entry.id)
-    alert('Entry deleted successfully!')
+    toast.success('Entry deleted successfully!')
     emit('saved')
   } catch (error) {
     console.error('Failed to delete entry:', error)
-    alert('Failed to delete entry: ' + error.message)
+    toast.error('Failed to delete entry: ' + error.message)
   }
 }
 </script>

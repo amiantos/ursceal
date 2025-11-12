@@ -312,7 +312,7 @@ async function loadSettings() {
     }
   } catch (error) {
     console.error('Failed to load settings:', error)
-    alert('Failed to load settings: ' + error.message)
+    toast.error('Failed to load settings: ' + error.message)
   } finally {
     loading.value = false
     // Wait for next tick to ensure watch has processed initial load
