@@ -551,7 +551,7 @@ router.post('/:id/rewrite-third-person', asyncHandler(async (req, res) => {
   const characterCard = characterCards.length > 0 ? characterCards[0].data : null;
 
   // Build rewrite prompt (server owns this logic)
-  const rewriteInstruction = `Rewrite the following text to be in third person narrative perspective. Maintain all the story beats, dialogue, and events, but convert first person ("I", "me") and second person ("you") references to third person ("he", "she", "they"). Keep the writing style and tone consistent.`;
+  const rewriteInstruction = `Rewrite the following text to be in third person narrative perspective. Maintain all the story beats, dialogue, and events, but convert first person ("I", "me") and second person ("you") references to third person ("he", "she", "they"). Keep the writing style and tone consistent, but feel free to correct egregious issues with grammar, punctuation, and spelling.`;
 
   const { fullPrompt } = deepseek.buildGenerationPrompt('custom', {
     characterCard,
