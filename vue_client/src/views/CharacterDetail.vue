@@ -74,7 +74,7 @@
             </div>
             <div v-else class="section-content">
               <p class="section-display">
-                {{ character.imageUrl ? 'Image uploaded' : 'No image uploaded' }}
+                {{ character.hasImage ? 'Image uploaded' : 'No image uploaded' }}
               </p>
             </div>
           </section>
@@ -147,6 +147,51 @@
             <div v-else class="section-content">
               <p class="section-display">
                 {{ character.description || 'No description set' }}
+              </p>
+            </div>
+          </section>
+
+          <!-- Lorebook Association Section -->
+          <section class="edit-section">
+            <div class="section-header">
+              <h2>Associated Lorebook</h2>
+              <button
+                v-if="!editingLorebook"
+                class="btn btn-small btn-secondary"
+                @click="startEdit('lorebook')"
+              >
+                <i class="fas fa-edit"></i> Edit
+              </button>
+            </div>
+            <div v-if="editingLorebook" class="section-content editing">
+              <p class="help-text">
+                Auto-add this lorebook when using the character in stories
+              </p>
+              <select
+                v-model="editedLorebookId"
+                class="select-input"
+              >
+                <option :value="null">No lorebook</option>
+                <option
+                  v-for="lorebook in availableLorebooks"
+                  :key="lorebook.id"
+                  :value="lorebook.id"
+                >
+                  {{ lorebook.name }}
+                </option>
+              </select>
+              <div class="section-actions">
+                <button class="btn btn-secondary" @click="cancelEdit('lorebook')">
+                  Cancel
+                </button>
+                <button class="btn btn-primary" @click="saveLorebook">
+                  <i class="fas fa-save"></i> Save
+                </button>
+              </div>
+            </div>
+            <div v-else class="section-content">
+              <p class="section-display">
+                {{ getLorebookName(character.ursceal_lorebook_id) || 'No lorebook associated' }}
               </p>
             </div>
           </section>
@@ -378,7 +423,7 @@
 <script setup>
 import { ref, computed, onMounted, nextTick } from 'vue'
 import { useRouter } from 'vue-router'
-import { charactersAPI } from '../services/api'
+import { charactersAPI, lorebooksAPI } from '../services/api'
 import CharacterCard from '../components/CharacterCard.vue'
 
 const props = defineProps({
@@ -393,10 +438,12 @@ const router = useRouter()
 // State
 const loading = ref(true)
 const character = ref(null)
+const availableLorebooks = ref([])
 
 // Editing states
 const editingName = ref(false)
 const editingDescription = ref(false)
+const editingLorebook = ref(false)
 const editingPersonality = ref(false)
 const editingScenario = ref(false)
 const editingDialogueExamples = ref(false)
@@ -406,6 +453,7 @@ const editingImage = ref(false)
 // Edited values
 const editedName = ref('')
 const editedDescription = ref('')
+const editedLorebookId = ref(null)
 const editedPersonality = ref('')
 const editedScenario = ref('')
 const editedDialogueExamples = ref('')
@@ -422,8 +470,17 @@ const greetingTextarea = ref(null)
 
 // Load character data
 onMounted(async () => {
-  await loadCharacter()
+  await Promise.all([loadCharacter(), loadLorebooks()])
 })
+
+async function loadLorebooks() {
+  try {
+    const { lorebooks } = await lorebooksAPI.list()
+    availableLorebooks.value = lorebooks || []
+  } catch (error) {
+    console.error('Failed to load lorebooks:', error)
+  }
+}
 
 async function loadCharacter() {
   try {
@@ -432,9 +489,7 @@ async function loadCharacter() {
     // API returns { character: { data: {...}, spec: ..., metadata: ... } }
     // We need to flatten this for easier access
 
-    // Check if character has an image by trying to load it
-    // Images are served from /api/characters/${id}/image
-    // Add cache buster to ensure fresh loads
+    // Always set image URL - CharacterCard will handle if it doesn't exist
     const imageUrl = `/api/characters/${props.characterId}/image?t=${Date.now()}`
 
     character.value = {
@@ -446,15 +501,31 @@ async function loadCharacter() {
       mes_example: response.character.data.mes_example,
       first_mes: response.character.data.first_mes,
       alternate_greetings: response.character.data.alternate_greetings || [],
-      imageUrl: imageUrl, // Always set the image URL, CharacterCard will handle if it doesn't exist
+      ursceal_lorebook_id: response.character.data.extensions?.ursceal_lorebook_id || null,
+      imageUrl: imageUrl,
+      hasImage: false, // Will be set by checkImageExists
       // Store the full data in case we need it
       _fullData: response.character
     }
+
+    // Check if image actually exists by trying to load it
+    await checkImageExists()
   } catch (error) {
     console.error('Failed to load character:', error)
     alert('Failed to load character: ' + error.message)
   } finally {
     loading.value = false
+  }
+}
+
+async function checkImageExists() {
+  try {
+    const response = await fetch(`/api/characters/${props.characterId}/image`, {
+      method: 'HEAD'
+    })
+    character.value.hasImage = response.ok
+  } catch (error) {
+    character.value.hasImage = false
   }
 }
 
@@ -469,6 +540,9 @@ function startEdit(section) {
   } else if (section === 'description') {
     editedDescription.value = character.value.description || ''
     editingDescription.value = true
+  } else if (section === 'lorebook') {
+    editedLorebookId.value = character.value.ursceal_lorebook_id
+    editingLorebook.value = true
   } else if (section === 'personality') {
     editedPersonality.value = character.value.personality || ''
     editingPersonality.value = true
@@ -491,6 +565,9 @@ function cancelEdit(section) {
   } else if (section === 'description') {
     editingDescription.value = false
     editedDescription.value = ''
+  } else if (section === 'lorebook') {
+    editingLorebook.value = false
+    editedLorebookId.value = null
   } else if (section === 'personality') {
     editingPersonality.value = false
     editedPersonality.value = ''
@@ -531,6 +608,20 @@ async function saveDescription() {
   } catch (error) {
     console.error('Failed to update description:', error)
     alert('Failed to update description: ' + error.message)
+  }
+}
+
+async function saveLorebook() {
+  try {
+    await charactersAPI.update(props.characterId, {
+      ursceal_lorebook_id: editedLorebookId.value
+    })
+    character.value.ursceal_lorebook_id = editedLorebookId.value
+    editingLorebook.value = false
+    editedLorebookId.value = null
+  } catch (error) {
+    console.error('Failed to update lorebook association:', error)
+    alert('Failed to update lorebook association: ' + error.message)
   }
 }
 
@@ -617,13 +708,15 @@ async function saveImage() {
       scenario: character.value.scenario || '',
       mes_example: character.value.mes_example || '',
       first_mes: character.value.first_mes || '',
-      alternate_greetings: character.value.alternate_greetings || []
+      alternate_greetings: character.value.alternate_greetings || [],
+      ursceal_lorebook_id: character.value.ursceal_lorebook_id || null
     }))
 
     const updated = await charactersAPI.updateWithImage(props.characterId, formData)
 
     // Update character with new image URL - add cache buster to force reload
     character.value.imageUrl = updated.imageUrl + '?t=' + Date.now()
+    character.value.hasImage = true
 
     // Reset image editing state
     editingImage.value = false
@@ -660,6 +753,12 @@ async function deleteCharacter() {
     console.error('Failed to delete character:', error)
     alert('Failed to delete character: ' + error.message)
   }
+}
+
+function getLorebookName(lorebookId) {
+  if (!lorebookId) return null
+  const lorebook = availableLorebooks.value.find(lb => lb.id === lorebookId)
+  return lorebook?.name || null
 }
 
 // Alternate greetings management
@@ -923,7 +1022,8 @@ async function deleteAlternateGreeting(index) {
 }
 
 .text-input,
-.textarea-input {
+.textarea-input,
+.select-input {
   width: 100%;
   padding: 0.75rem;
   background-color: var(--bg-tertiary);
@@ -938,8 +1038,13 @@ async function deleteAlternateGreeting(index) {
 }
 
 .text-input:focus,
-.textarea-input:focus {
+.textarea-input:focus,
+.select-input:focus {
   border-color: var(--accent-primary);
+}
+
+.select-input {
+  cursor: pointer;
 }
 
 .textarea-input {

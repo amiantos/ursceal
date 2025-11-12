@@ -36,6 +36,14 @@
       <template #tab-characters>
         <div class="section-header">
           <h2><i class="fas fa-users"></i> Character Library</h2>
+          <div class="header-actions">
+            <button class="btn btn-primary" @click="showCreateCharacterModal = true">
+              <i class="fas fa-plus"></i> Create
+            </button>
+            <button class="btn btn-secondary" @click="showImportCharacterModal = true">
+              <i class="fas fa-download"></i> Import
+            </button>
+          </div>
         </div>
 
         <div v-if="loadingCharacters" class="loading">Loading characters...</div>
@@ -89,6 +97,20 @@
       @open-story="openStory"
       @delete="deleteStory"
     />
+
+    <!-- Create Character Modal -->
+    <CreateCharacterModal
+      v-if="showCreateCharacterModal"
+      @close="showCreateCharacterModal = false"
+      @created="handleCharacterCreated"
+    />
+
+    <!-- Import Character Modal -->
+    <ImportCharacterModal
+      v-if="showImportCharacterModal"
+      @close="showImportCharacterModal = false"
+      @imported="handleCharacterImported"
+    />
   </div>
 </template>
 
@@ -101,6 +123,8 @@ import StoriesTable from '../components/StoriesTable.vue'
 import CharactersTable from '../components/CharactersTable.vue'
 import LorebooksTable from '../components/LorebooksTable.vue'
 import CharacterStoriesModal from '../components/CharacterStoriesModal.vue'
+import CreateCharacterModal from '../components/CreateCharacterModal.vue'
+import ImportCharacterModal from '../components/ImportCharacterModal.vue'
 
 const router = useRouter()
 
@@ -114,6 +138,10 @@ const loadingLorebooks = ref(true)
 // Character Stories Modal
 const showCharacterStoriesModal = ref(false)
 const selectedCharacter = ref(null)
+
+// Create/Import Character Modals
+const showCreateCharacterModal = ref(false)
+const showImportCharacterModal = ref(false)
 
 const characterStoriesForModal = computed(() => {
   if (!selectedCharacter.value) return []
@@ -277,6 +305,22 @@ async function deleteLorebook(lorebook) {
     alert('Failed to delete lorebook: ' + error.message)
   }
 }
+
+async function handleCharacterCreated(character) {
+  // Reload characters to include the new one
+  await loadCharacters()
+  // Switch to characters tab if not already there
+  activeTab.value = 'characters'
+}
+
+async function handleCharacterImported(character) {
+  // Reload characters to include the imported one
+  await loadCharacters()
+  // Also reload lorebooks in case character had embedded lorebook
+  await loadLorebooks()
+  // Switch to characters tab if not already there
+  activeTab.value = 'characters'
+}
 </script>
 
 <style scoped>
@@ -328,6 +372,11 @@ async function deleteLorebook(lorebook) {
   font-size: 1.5rem;
   display: flex;
   align-items: center;
+  gap: 0.5rem;
+}
+
+.header-actions {
+  display: flex;
   gap: 0.5rem;
 }
 
