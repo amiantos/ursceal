@@ -71,9 +71,14 @@
       <template #tab-lorebooks>
         <div class="section-header">
           <h2><i class="fas fa-book-open"></i> Lorebook Library</h2>
-          <button class="btn btn-primary" @click="showCreateLorebookModal = true">
-            <i class="fas fa-plus"></i> Create
-          </button>
+          <div class="header-actions">
+            <button class="btn btn-primary" @click="showCreateLorebookModal = true">
+              <i class="fas fa-plus"></i> Create
+            </button>
+            <button class="btn btn-secondary" @click="showImportLorebookModal = true">
+              <i class="fas fa-download"></i> Import
+            </button>
+          </div>
         </div>
 
         <div v-if="loadingLorebooks" class="loading">Loading lorebooks...</div>
@@ -125,6 +130,13 @@
       @close="showCreateLorebookModal = false"
       @created="handleLorebookCreated"
     />
+
+    <!-- Import Lorebook Modal -->
+    <ImportLorebookModal
+      v-if="showImportLorebookModal"
+      @close="showImportLorebookModal = false"
+      @imported="handleLorebookImported"
+    />
   </div>
 </template>
 
@@ -141,6 +153,7 @@ import CharacterStoriesModal from '../components/CharacterStoriesModal.vue'
 import CreateCharacterModal from '../components/CreateCharacterModal.vue'
 import ImportCharacterModal from '../components/ImportCharacterModal.vue'
 import CreateLorebookModal from '../components/CreateLorebookModal.vue'
+import ImportLorebookModal from '../components/ImportLorebookModal.vue'
 
 const router = useRouter()
 const toast = useToast()
@@ -160,8 +173,9 @@ const selectedCharacter = ref(null)
 const showCreateCharacterModal = ref(false)
 const showImportCharacterModal = ref(false)
 
-// Create Lorebook Modal
+// Create/Import Lorebook Modals
 const showCreateLorebookModal = ref(false)
+const showImportLorebookModal = ref(false)
 
 const characterStoriesForModal = computed(() => {
   if (!selectedCharacter.value) return []
@@ -350,6 +364,13 @@ async function handleLorebookCreated(lorebook) {
   // Reload lorebooks to include the new one
   await loadLorebooks()
   // The modal already handles navigation to the editor
+}
+
+async function handleLorebookImported(lorebook) {
+  // Reload lorebooks to include the imported one
+  await loadLorebooks()
+  // Switch to lorebooks tab if not already there
+  activeTab.value = 'lorebooks'
 }
 
 function goToSettings() {

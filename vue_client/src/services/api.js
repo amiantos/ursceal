@@ -303,6 +303,22 @@ export const lorebooksAPI = {
       method: 'DELETE',
     })
   },
+
+  importJSON(file) {
+    const formData = new FormData()
+    formData.append('lorebook', file)
+
+    return fetch('/api/lorebooks/import', {
+      method: 'POST',
+      body: formData,
+    }).then(async response => {
+      if (!response.ok) {
+        const error = await response.json()
+        throw new Error(error.message || 'Import failed')
+      }
+      return response.json()
+    })
+  },
 }
 
 // Settings API
