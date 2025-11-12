@@ -156,16 +156,34 @@ router.post('/:id/characters', asyncHandler(async (req, res) => {
   // Load character card and process first message
   let processedFirstMessage = null;
   let updatedTitle = null;
+  let addedLorebookId = null;
   try {
     const characterCard = await storage.getCharacter(characterId);
 
-    // Update story title if it's still "Untitled Story"
-    if (story.title === 'Untitled Story' && characterCard.data?.name) {
+    // Update story title if it's still "Untitled Story" or starts with "Story with"
+    if ((story.title === 'Untitled Story' || story.title.startsWith('Story with ')) && characterCard.data?.name) {
       const newTitle = `Story with ${characterCard.data.name}`;
       await storage.updateStoryMetadata(req.params.id, {
         title: newTitle
       });
       updatedTitle = newTitle;
+    }
+
+    // Auto-add character's lorebook if it has one
+    const lorebookId = characterCard.data?.extensions?.ursceal_lorebook_id;
+    if (lorebookId) {
+      try {
+        // Check if lorebook isn't already attached
+        const currentLorebooks = story.lorebookIds || [];
+        if (!currentLorebooks.includes(lorebookId)) {
+          await storage.addLorebookToStory(req.params.id, lorebookId);
+          addedLorebookId = lorebookId;
+          console.log(`Auto-added lorebook ${lorebookId} for character ${characterId}`);
+        }
+      } catch (error) {
+        console.error('Failed to auto-add character lorebook:', error);
+        // Don't fail the whole operation if lorebook addition fails
+      }
     }
 
     if (characterCard.data?.first_mes) {
@@ -189,7 +207,8 @@ router.post('/:id/characters', asyncHandler(async (req, res) => {
   res.json({
     success: true,
     processedFirstMessage,
-    updatedTitle
+    updatedTitle,
+    addedLorebookId
   });
 }));
 
@@ -514,7 +533,7 @@ router.post('/:id/continue-with-instruction', asyncHandler(async (req, res) => {
     characterCard,
     allCharacterCards,
     currentContent: story.content,
-    customPrompt: instruction.trim(),
+    customPrompt: `Continue the story naturally from where it left off. Write the next 2-3 paragraphs maximum, maintaining the established tone and style, write less if it makes sense stylistically or sets up a good response opportunity for other characters. The user provided the following guidance of what they wish to see happen next: ${instruction.trim()}`,
     persona,
   });
 
