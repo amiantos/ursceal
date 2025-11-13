@@ -276,17 +276,7 @@ export class DeepSeekProvider extends LLMProvider {
 
     let storyContext = "";
     let instruction = "";
-
-    // Include current content if it exists (up to ~16,000 tokens = ~64,000 characters)
-    if (storyContent && storyContent.trim()) {
-      const maxChars = 64000; // Rough estimate: 4 chars per token, 16k tokens
-      const contentToInclude =
-        storyContent.length > maxChars
-          ? "..." + storyContent.slice(-maxChars)
-          : storyContent;
-
-      storyContext = `Here is the current story so far:\n\n${contentToInclude}\n\n---\n\n`;
-    }
+    const maxChars = 64000; // Rough estimate: 4 chars per token, 16k tokens
 
     // Use template text if provided, otherwise use defaults
     if (templateText) {
@@ -299,8 +289,28 @@ export class DeepSeekProvider extends LLMProvider {
       if (customInstruction) {
         instruction = instruction.replace(/\{\{instruction\}\}/g, customInstruction);
       }
+      if (storyContent) {
+        instruction = instruction.replace(/\{\{storyContent\}\}/g, storyContent);
+      }
+
+      // If template doesn't use {{storyContent}}, add story context separately
+      if (storyContent && storyContent.trim() && !templateText.includes('{{storyContent}}')) {
+        const contentToInclude =
+          storyContent.length > maxChars
+            ? "..." + storyContent.slice(-maxChars)
+            : storyContent;
+        storyContext = `Here is the current story so far:\n\n${contentToInclude}\n\n---\n\n`;
+      }
     } else {
-      // Default templates (backwards compatibility)
+      // Default templates - always add story context
+      if (storyContent && storyContent.trim()) {
+        const contentToInclude =
+          storyContent.length > maxChars
+            ? "..." + storyContent.slice(-maxChars)
+            : storyContent;
+        storyContext = `Here is the current story so far:\n\n${contentToInclude}\n\n---\n\n`;
+      }
+
       switch (type) {
         case "continue":
           instruction =

@@ -232,17 +232,6 @@ export class AIHordeProvider extends LLMProvider {
     // Note: maxChars should be calculated before calling this method using calculateDynamicContextLimit()
     const charLimit = maxChars || 6000;  // Fallback to 6000 chars (~2048 tokens with overhead)
 
-    if (storyContent && storyContent.trim()) {
-      let contentToInclude = storyContent;
-
-      // Truncate if needed, preserving the end of the story
-      if (contentToInclude.length > charLimit) {
-        contentToInclude = "..." + contentToInclude.slice(-charLimit);
-      }
-
-      storyContext = `Here is the current story so far:\n\n${contentToInclude}\n\n---\n\n`;
-    }
-
     // Use template text if provided, otherwise use defaults
     if (templateText) {
       instruction = templateText;
@@ -252,8 +241,28 @@ export class AIHordeProvider extends LLMProvider {
       if (customInstruction) {
         instruction = instruction.replace(/\{\{instruction\}\}/g, customInstruction);
       }
+      if (storyContent) {
+        instruction = instruction.replace(/\{\{storyContent\}\}/g, storyContent);
+      }
+
+      // If template doesn't use {{storyContent}}, add story context separately
+      if (storyContent && storyContent.trim() && !templateText.includes('{{storyContent}}')) {
+        let contentToInclude = storyContent;
+        if (contentToInclude.length > charLimit) {
+          contentToInclude = "..." + contentToInclude.slice(-charLimit);
+        }
+        storyContext = `Here is the current story so far:\n\n${contentToInclude}\n\n---\n\n`;
+      }
     } else {
-      // Default templates
+      // Default templates - always add story context
+      if (storyContent && storyContent.trim()) {
+        let contentToInclude = storyContent;
+        if (contentToInclude.length > charLimit) {
+          contentToInclude = "..." + contentToInclude.slice(-charLimit);
+        }
+        storyContext = `Here is the current story so far:\n\n${contentToInclude}\n\n---\n\n`;
+      }
+
       switch (type) {
         case "continue":
           instruction =
