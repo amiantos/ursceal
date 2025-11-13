@@ -276,7 +276,11 @@ const showManageCharacters = ref(false)
 const showManageLorebooks = ref(false)
 const showRenameStory = ref(false)
 const showPresetSelector = ref(false)
-const showFloatingAvatar = ref(false)
+
+// Load floating avatar state from localStorage
+const FLOATING_AVATAR_KEY = 'ursceal-floating-avatar-open'
+const showFloatingAvatar = ref(localStorage.getItem(FLOATING_AVATAR_KEY) === 'true')
+
 const storyCharacters = ref([])
 const shouldShowReasoning = ref(false) // Setting from server
 
@@ -289,6 +293,11 @@ const firstCharacter = computed(() => {
   return storyCharacters.value.length > 0 ? storyCharacters.value[0] : null
 })
 
+// Save floating avatar state to localStorage when it changes
+watch(showFloatingAvatar, (isOpen) => {
+  localStorage.setItem(FLOATING_AVATAR_KEY, isOpen.toString())
+})
+
 // Auto-save
 let autoSaveTimeout = null
 
@@ -296,6 +305,11 @@ onMounted(async () => {
   await loadStory()
   await Promise.all([loadCharacters(), loadSettings()])
   startAutoSave()
+
+  // Ensure floating avatar is hidden if there are no characters
+  if (showFloatingAvatar.value && !firstCharacter.value) {
+    showFloatingAvatar.value = false
+  }
 })
 
 onUnmounted(() => {

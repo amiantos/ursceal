@@ -42,7 +42,7 @@
 </template>
 
 <script setup>
-import { ref, computed, onMounted, onUnmounted } from 'vue'
+import { ref, computed, onMounted, onUnmounted, watch } from 'vue'
 
 const props = defineProps({
   character: {
@@ -53,12 +53,23 @@ const props = defineProps({
 
 defineEmits(['close'])
 
+const STORAGE_KEY = 'ursceal-floating-avatar'
+
 const windowRef = ref(null)
 const showClose = ref(false)
 
+// Load saved position and size from localStorage
+const savedState = localStorage.getItem(STORAGE_KEY)
+const defaultState = savedState ? JSON.parse(savedState) : {
+  x: 20,
+  y: 100,
+  width: 300,
+  height: 400
+}
+
 // Window position and size
-const position = ref({ x: 20, y: 100 })
-const size = ref({ width: 300, height: 400 })
+const position = ref({ x: defaultState.x, y: defaultState.y })
+const size = ref({ width: defaultState.width, height: defaultState.height })
 
 // Dragging state
 const isDragging = ref(false)
@@ -67,6 +78,16 @@ const dragStart = ref({ x: 0, y: 0 })
 // Resizing state
 const isResizing = ref(false)
 const resizeStart = ref({ x: 0, y: 0, width: 0, height: 0 })
+
+// Save state to localStorage whenever position or size changes
+watch([position, size], () => {
+  localStorage.setItem(STORAGE_KEY, JSON.stringify({
+    x: position.value.x,
+    y: position.value.y,
+    width: size.value.width,
+    height: size.value.height
+  }))
+}, { deep: true })
 
 const windowStyle = computed(() => ({
   left: `${position.value.x}px`,
@@ -167,7 +188,8 @@ onUnmounted(() => {
 .avatar-image {
   width: 100%;
   height: 100%;
-  object-fit: contain;
+  object-fit: cover;
+  object-position: center top;
   user-select: none;
   pointer-events: none;
 }
