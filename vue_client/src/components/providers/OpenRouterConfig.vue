@@ -167,11 +167,22 @@
         </p>
 
         <div class="provider-input-section">
+          <select
+            v-model="selectedProviderFromDropdown"
+            class="select-input"
+            @change="addProviderFromDropdown"
+          >
+            <option value="">Select a provider...</option>
+            <option v-for="provider in commonProviders" :key="provider.id" :value="provider.id">
+              {{ provider.name }}
+            </option>
+          </select>
+          <span class="input-separator">or</span>
           <input
             v-model="providerInput"
             type="text"
-            class="text-input"
-            placeholder="e.g., OpenAI, Anthropic, Google"
+            class="text-input provider-text-input"
+            placeholder="Enter custom provider"
             @keypress.enter="addProvider"
           />
           <button
@@ -181,7 +192,7 @@
             :disabled="!providerInput.trim()"
           >
             <i class="fas fa-plus"></i>
-            Add Provider
+            Add
           </button>
         </div>
 
@@ -204,7 +215,7 @@
         </div>
 
         <small class="help-text">
-          Common providers: OpenAI, Anthropic, Google, Together, Fireworks, Lepton, Deepinfra
+          Select from the dropdown or enter a custom provider name. Multiple providers can be added.
         </small>
       </div>
 
@@ -261,6 +272,27 @@ const groupByVendor = ref(false)
 
 // Provider preferences state
 const providerInput = ref('')
+const selectedProviderFromDropdown = ref('')
+
+// Common OpenRouter providers
+const commonProviders = [
+  { id: 'OpenAI', name: 'OpenAI' },
+  { id: 'Anthropic', name: 'Anthropic' },
+  { id: 'Google', name: 'Google' },
+  { id: 'Meta', name: 'Meta (Llama)' },
+  { id: 'Mistral', name: 'Mistral AI' },
+  { id: 'Cohere', name: 'Cohere' },
+  { id: 'Together', name: 'Together AI' },
+  { id: 'Fireworks', name: 'Fireworks AI' },
+  { id: 'Lepton', name: 'Lepton AI' },
+  { id: 'Deepinfra', name: 'DeepInfra' },
+  { id: 'Perplexity', name: 'Perplexity' },
+  { id: 'Groq', name: 'Groq' },
+  { id: 'Nous', name: 'Nous Research' },
+  { id: 'Qwen', name: 'Qwen (Alibaba)' },
+  { id: 'DeepSeek', name: 'DeepSeek' },
+  { id: 'xAI', name: 'xAI (Grok)' }
+]
 
 // Local computed for API config
 const localApiConfig = computed({
@@ -393,11 +425,24 @@ function addProvider() {
   if (provider && !localProviders.value.includes(provider)) {
     localProviders.value = [...localProviders.value, provider]
     providerInput.value = ''
+    toast.success(`Added provider: ${provider}`)
   }
 }
 
+function addProviderFromDropdown() {
+  const provider = selectedProviderFromDropdown.value
+  if (provider && !localProviders.value.includes(provider)) {
+    localProviders.value = [...localProviders.value, provider]
+    toast.success(`Added provider: ${provider}`)
+  }
+  // Reset dropdown
+  selectedProviderFromDropdown.value = ''
+}
+
 function removeProvider(index) {
+  const provider = localProviders.value[index]
   localProviders.value = localProviders.value.filter((_, i) => i !== index)
+  toast.success(`Removed provider: ${provider}`)
 }
 
 // Formatting helpers
@@ -758,10 +803,25 @@ function truncateDescription(description, maxLength = 100) {
   display: flex;
   gap: 0.5rem;
   margin-bottom: 0.75rem;
+  align-items: center;
+  flex-wrap: wrap;
 }
 
-.provider-input-section .text-input {
+.provider-input-section .select-input {
   flex: 1;
+  min-width: 200px;
+}
+
+.provider-input-section .provider-text-input {
+  flex: 1;
+  min-width: 150px;
+}
+
+.input-separator {
+  color: var(--text-secondary);
+  font-size: 0.9rem;
+  font-style: italic;
+  padding: 0 0.25rem;
 }
 
 .providers-list {
