@@ -93,6 +93,8 @@ export class OpenRouterProvider extends LLMProvider {
       stream: false,
       max_tokens: options.maxTokens || 4000,
       temperature: options.temperature !== undefined ? options.temperature : 1.0,
+      // Enable reasoning tokens for models that support it
+      reasoning: { enabled: true }
     };
 
     // Add route parameter if fallbacks are disabled
@@ -149,6 +151,8 @@ export class OpenRouterProvider extends LLMProvider {
       stream: true,
       max_tokens: options.maxTokens || 4000,
       temperature: options.temperature !== undefined ? options.temperature : 1.0,
+      // Enable reasoning tokens for models that support it
+      reasoning: { enabled: true }
     };
 
     // Add route parameter if fallbacks are disabled
