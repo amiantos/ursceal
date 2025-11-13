@@ -127,6 +127,14 @@
               <i class="fas fa-message"></i>
               <span>Select Greeting</span>
             </button>
+            <button
+              class="overflow-menu-item"
+              :disabled="storyCharacters.length === 0"
+              @click="showFloatingAvatar = true"
+            >
+              <i class="fas fa-image"></i>
+              <span>Show Character Avatar</span>
+            </button>
             <button class="overflow-menu-item" @click="rewriteToThirdPerson">
               <i class="fas fa-repeat"></i>
               <span>Rewrite to Third Person</span>
@@ -208,6 +216,13 @@
       @close="showPresetSelector = false"
       @updated="handleStoryUpdated"
     />
+
+    <!-- Floating Avatar Window -->
+    <FloatingAvatarWindow
+      v-if="showFloatingAvatar && firstCharacter"
+      :character="firstCharacter"
+      @close="showFloatingAvatar = false"
+    />
   </div>
 </template>
 
@@ -228,6 +243,7 @@ import ManageCharactersModal from '../components/ManageCharactersModal.vue'
 import ManageLorebooksModal from '../components/ManageLorebooksModal.vue'
 import RenameStoryModal from '../components/RenameStoryModal.vue'
 import StoryPresetModal from '../components/StoryPresetModal.vue'
+import FloatingAvatarWindow from '../components/FloatingAvatarWindow.vue'
 
 const props = defineProps({
   storyId: {
@@ -260,12 +276,17 @@ const showManageCharacters = ref(false)
 const showManageLorebooks = ref(false)
 const showRenameStory = ref(false)
 const showPresetSelector = ref(false)
+const showFloatingAvatar = ref(false)
 const storyCharacters = ref([])
 const shouldShowReasoning = ref(false) // Setting from server
 
 // Computed
 const hasUnsavedChanges = computed(() => {
   return content.value !== originalContent.value
+})
+
+const firstCharacter = computed(() => {
+  return storyCharacters.value.length > 0 ? storyCharacters.value[0] : null
 })
 
 // Auto-save
