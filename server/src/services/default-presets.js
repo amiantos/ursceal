@@ -15,31 +15,8 @@ export const DEFAULT_PROMPT_TEMPLATES = {
 
 export function getDefaultPresets() {
   return {
-    deepseek: {
-      name: "DeepSeek",
-      provider: "deepseek",
-      apiConfig: {
-        apiKey: "",
-        baseURL: "https://api.deepseek.com/v1",
-        model: "deepseek-reasoner"
-      },
-      generationSettings: {
-        maxTokens: 4000,
-        maxContextTokens: 128000,  // DeepSeek Reasoner context window
-        temperature: 1.5,
-        includeDialogueExamples: false
-      },
-      lorebookSettings: {
-        scanDepth: 2000,
-        tokenBudget: 1800,
-        recursionDepth: 3,
-        enableRecursion: true
-      },
-      promptTemplates: { ...DEFAULT_PROMPT_TEMPLATES }
-    },
-
     aihorde: {
-      name: "AI Horde",
+      name: "Default",
       provider: "aihorde",
       apiConfig: {
         apiKey: "0000000000", // Default anonymous key
@@ -64,75 +41,6 @@ export function getDefaultPresets() {
       },
       promptTemplates: { ...DEFAULT_PROMPT_TEMPLATES }
     },
-
-    openai: {
-      name: "OpenAI",
-      provider: "openai",
-      apiConfig: {
-        apiKey: "",
-        baseURL: "https://api.openai.com/v1",
-        model: "gpt-4-turbo-preview"
-      },
-      generationSettings: {
-        maxTokens: 4000,
-        maxContextTokens: 128000,  // GPT-4 Turbo context window
-        temperature: 1.0,  // OpenAI uses 0-2 range, but 1.0 is recommended
-        includeDialogueExamples: false
-      },
-      lorebookSettings: {
-        scanDepth: 2000,
-        tokenBudget: 1800,
-        recursionDepth: 3,
-        enableRecursion: true
-      },
-      promptTemplates: { ...DEFAULT_PROMPT_TEMPLATES }
-    },
-
-    anthropic: {
-      name: "Anthropic",
-      provider: "anthropic",
-      apiConfig: {
-        apiKey: "",
-        baseURL: "https://api.anthropic.com/v1",
-        model: "claude-3-5-sonnet-20241022"
-      },
-      generationSettings: {
-        maxTokens: 4000,
-        maxContextTokens: 200000,  // Claude 3.5 Sonnet context window
-        temperature: 1.0,
-        includeDialogueExamples: false
-      },
-      lorebookSettings: {
-        scanDepth: 2000,
-        tokenBudget: 1800,
-        recursionDepth: 3,
-        enableRecursion: true
-      },
-      promptTemplates: { ...DEFAULT_PROMPT_TEMPLATES }
-    },
-
-    openrouter: {
-      name: "OpenRouter",
-      provider: "openrouter",
-      apiConfig: {
-        apiKey: "",
-        baseURL: "https://openrouter.ai/api/v1",
-        model: "anthropic/claude-3.5-sonnet"
-      },
-      generationSettings: {
-        maxTokens: 4000,
-        maxContextTokens: 128000,  // Varies by model; reasonable default
-        temperature: 1.0,
-        includeDialogueExamples: false
-      },
-      lorebookSettings: {
-        scanDepth: 2000,
-        tokenBudget: 1800,
-        recursionDepth: 3,
-        enableRecursion: true
-      },
-      promptTemplates: { ...DEFAULT_PROMPT_TEMPLATES }
-    }
   };
 }
 
