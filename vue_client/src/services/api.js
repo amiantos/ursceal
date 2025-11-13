@@ -185,11 +185,12 @@ export const storiesAPI = {
     }
   },
 
-  async *rewriteThirdPerson(storyId) {
+  async *rewriteThirdPerson(storyId, signal = null) {
     const url = `${baseURL}/stories/${storyId}/rewrite-third-person`
     const response = await fetch(url, {
       method: 'POST',
-      headers: { 'Content-Type': 'application/json' }
+      headers: { 'Content-Type': 'application/json' },
+      signal
     })
 
     if (!response.ok) {
@@ -201,26 +202,35 @@ export const storiesAPI = {
     const decoder = new TextDecoder()
     let buffer = ''
 
-    while (true) {
-      const { done, value } = await reader.read()
-      if (done) break
+    try {
+      while (true) {
+        const { done, value } = await reader.read()
+        if (done) break
 
-      buffer += decoder.decode(value, { stream: true })
-      const lines = buffer.split('\n')
-      buffer = lines.pop() || ''
+        buffer += decoder.decode(value, { stream: true })
+        const lines = buffer.split('\n')
+        buffer = lines.pop() || ''
 
-      for (const line of lines) {
-        if (line.startsWith('data: ')) {
-          const data = line.slice(6)
-          if (data === '[DONE]') return
+        for (const line of lines) {
+          if (line.startsWith('data: ')) {
+            const data = line.slice(6)
+            if (data === '[DONE]') return
 
-          try {
-            yield JSON.parse(data)
-          } catch (e) {
-            console.error('Failed to parse SSE data:', e)
+            try {
+              const parsed = JSON.parse(data)
+              if (parsed.cancelled) {
+                throw new Error('Generation cancelled')
+              }
+              yield parsed
+            } catch (e) {
+              if (e.message === 'Generation cancelled') throw e
+              console.error('Failed to parse SSE data:', e)
+            }
           }
         }
       }
+    } finally {
+      reader.releaseLock()
     }
   },
 }

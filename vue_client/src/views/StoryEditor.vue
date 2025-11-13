@@ -587,6 +587,9 @@ async function rewriteToThirdPerson() {
   // Save before rewriting
   await saveStory(true)
 
+  // Create abort controller for cancellation
+  abortController = new AbortController()
+
   try {
     generating.value = true
     generationStatus.value = 'Thinking...'
@@ -599,8 +602,8 @@ async function rewriteToThirdPerson() {
     let rewrittenContent = ''
     let reasoningText = ''
 
-    // Stream rewrite
-    const stream = storiesAPI.rewriteThirdPerson(props.storyId)
+    // Stream rewrite with abort signal
+    const stream = storiesAPI.rewriteThirdPerson(props.storyId, abortController.signal)
 
     for await (const chunk of stream) {
       // Capture prompts
@@ -676,10 +679,17 @@ async function rewriteToThirdPerson() {
     await saveStory(true)
     toast.success('Rewrite complete')
   } catch (error) {
-    console.error('Rewrite error:', error)
-    toast.error('Rewrite failed: ' + error.message)
+    // Check if it was a cancellation
+    if (error.name === 'AbortError' || error.message === 'Generation cancelled') {
+      console.log('Rewrite was cancelled by user')
+      toast.info('Rewrite cancelled')
+    } else {
+      console.error('Rewrite error:', error)
+      toast.error('Rewrite failed: ' + error.message)
+    }
   } finally {
     generating.value = false
+    abortController = null
   }
 }
 

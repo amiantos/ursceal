@@ -673,13 +673,29 @@ router.post('/:id/rewrite-third-person', asyncHandler(async (req, res) => {
 
   setupSSE(res);
 
+  // Create abort controller for cancellation support
+  const abortController = new AbortController();
+
+  // Handle client disconnection
+  req.on('close', () => {
+    if (!res.writableEnded) {
+      console.log('Client disconnected, aborting generation');
+      abortController.abort();
+    }
+  });
+
   try {
     await streamGeneration(res, provider, preset, context, 'rewriteThirdPerson', {
       characterCards
-    });
+    }, abortController.signal);
   } catch (error) {
-    console.error('Generation error:', error);
-    res.write(`data: ${JSON.stringify({ error: error.message })}\n\n`);
+    if (error.message === 'Generation cancelled' || abortController.signal.aborted) {
+      console.log('Generation was cancelled');
+      res.write(`data: ${JSON.stringify({ cancelled: true })}\n\n`);
+    } else {
+      console.error('Generation error:', error);
+      res.write(`data: ${JSON.stringify({ error: error.message })}\n\n`);
+    }
     res.end();
   }
 }));
