@@ -242,7 +242,7 @@
 </template>
 
 <script setup>
-import { ref, computed } from 'vue'
+import { ref, computed, onMounted } from 'vue'
 import BaseProviderConfig from './shared/BaseProviderConfig.vue'
 import { presetsAPI } from '../../services/api'
 import { useToast } from '../../composables/useToast'
@@ -327,6 +327,13 @@ const localAllowFallbacks = computed({
       ...localApiConfig.value,
       allowFallbacks: value
     }
+  }
+})
+
+// Automatically fetch models on mount if API key is present
+onMounted(() => {
+  if (localApiConfig.value.apiKey) {
+    fetchOpenRouterModels()
   }
 })
 
