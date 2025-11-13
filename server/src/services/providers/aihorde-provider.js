@@ -214,6 +214,34 @@ export class AIHordeProvider extends LLMProvider {
   }
 
   /**
+   * Cancel an ongoing generation request
+   * @param {string} requestId - The request ID to cancel
+   * @returns {Promise<Object>} Any partial results that were generated
+   */
+  async cancelRequest(requestId) {
+    const response = await fetch(`${this.baseURL}/generate/text/status/${requestId}`, {
+      method: "DELETE",
+      headers: {
+        "apikey": this.apiKey,
+      }
+    });
+
+    if (!response.ok) {
+      const errorData = await response.json().catch(() => ({}));
+      throw new Error(
+        errorData.message || `AI Horde cancel request failed: ${response.statusText}`
+      );
+    }
+
+    const data = await response.json();
+    return {
+      finished: data.done || false,
+      faulted: data.faulted || false,
+      generations: data.generations || []
+    };
+  }
+
+  /**
    * Generate text (non-streaming, with polling)
    */
   async generate(systemPrompt, userPrompt, options = {}) {
@@ -274,47 +302,65 @@ export class AIHordeProvider extends LLMProvider {
     const timeout = options.timeout || 300000;
     const startTime = Date.now();
 
-    while (true) {
-      // Check timeout
-      if (Date.now() - startTime > timeout) {
-        throw new Error('AI Horde generation timed out');
-      }
+    try {
+      while (true) {
+        // Check if aborted
+        if (options.signal?.aborted) {
+          await this.cancelRequest(requestId);
+          throw new Error('Generation cancelled');
+        }
 
-      // Check status
-      const status = await this.checkStatus(requestId);
+        // Check timeout
+        if (Date.now() - startTime > timeout) {
+          throw new Error('AI Horde generation timed out');
+        }
 
-      // Yield status update
-      yield {
-        type: 'status',
-        queuePosition: status.queuePosition,
-        waitTime: status.waitTime,
-        finished: status.finished,
-        faulted: status.faulted
-      };
+        // Check status
+        const status = await this.checkStatus(requestId);
 
-      if (status.faulted) {
-        throw new Error('AI Horde generation failed');
-      }
-
-      if (status.finished && status.generations.length > 0) {
-        // Yield final result
-        const generation = status.generations[0];
-        // Strip leading newlines from response
-        const cleanedText = (generation.text || "").replace(/^\n+/, "");
+        // Yield status update
         yield {
-          type: 'complete',
-          content: cleanedText,
-          metadata: {
-            requestId,
-            model: generation.model,
-            worker: generation.worker_name
-          }
+          type: 'status',
+          queuePosition: status.queuePosition,
+          waitTime: status.waitTime,
+          finished: status.finished,
+          faulted: status.faulted
         };
-        return;
-      }
 
-      // Wait before next poll
-      await new Promise(resolve => setTimeout(resolve, this.pollingInterval));
+        if (status.faulted) {
+          throw new Error('AI Horde generation failed');
+        }
+
+        if (status.finished && status.generations.length > 0) {
+          // Yield final result
+          const generation = status.generations[0];
+          // Strip leading newlines from response
+          const cleanedText = (generation.text || "").replace(/^\n+/, "");
+          yield {
+            type: 'complete',
+            content: cleanedText,
+            metadata: {
+              requestId,
+              model: generation.model,
+              worker: generation.worker_name
+            }
+          };
+          return;
+        }
+
+        // Wait before next poll
+        await new Promise(resolve => setTimeout(resolve, this.pollingInterval));
+      }
+    } catch (error) {
+      // Clean up request on error
+      if (error.message !== 'Generation cancelled') {
+        try {
+          await this.cancelRequest(requestId);
+        } catch (cancelError) {
+          // Ignore errors during cleanup
+        }
+      }
+      throw error;
     }
   }
 
