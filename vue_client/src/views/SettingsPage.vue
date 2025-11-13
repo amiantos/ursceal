@@ -76,24 +76,6 @@
           </div>
         </section>
 
-        <!-- Configuration Presets Section -->
-        <section class="edit-section">
-          <div class="section-header">
-            <h2>Configuration Presets</h2>
-          </div>
-          <div class="section-content">
-            <p class="section-description">
-              Manage AI provider configurations, generation settings, and prompt templates.
-              You can create multiple presets for different providers (DeepSeek, AI Horde, OpenAI, Claude, etc.)
-              and switch between them per-story or set a default.
-            </p>
-            <button class="btn btn-primary" @click="showManagePresets = true">
-              <i class="fas fa-cog"></i>
-              Manage Configuration Presets
-            </button>
-          </div>
-        </section>
-
         <!-- Legacy Lorebook Settings Section (if needed for backwards compat) -->
         <section v-if="false" class="edit-section">
           <div class="section-header">
@@ -159,13 +141,6 @@
 
       </div>
     </div>
-
-    <!-- Manage Presets Modal -->
-    <ManagePresetsModal
-      v-if="showManagePresets"
-      @close="showManagePresets = false"
-      @updated="() => {}"
-    />
   </div>
 </template>
 
@@ -174,7 +149,6 @@ import { ref, watch, onMounted, nextTick } from 'vue'
 import { settingsAPI, charactersAPI } from '../services/api'
 import { useToast } from '../composables/useToast'
 import { useNavigation } from '../composables/useNavigation'
-import ManagePresetsModal from '../components/ManagePresetsModal.vue'
 
 const toast = useToast()
 const { goBack } = useNavigation()
@@ -187,7 +161,6 @@ const isInitialLoad = ref(true)
 const originalApiKey = ref('')
 const apiKeyChanged = ref(false)
 const characters = ref([])
-const showManagePresets = ref(false)
 const settings = ref({
   defaultPersonaId: null,
   apiKey: '',
