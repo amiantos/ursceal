@@ -5,7 +5,7 @@
 import express from 'express';
 import { asyncHandler, AppError } from '../middleware/error-handler.js';
 import { StorageService } from '../services/storage.js';
-import { DeepSeekAPI } from '../services/deepseek-api.js';
+import { PromptBuilder } from '../services/prompt-builder.js';
 import { MacroProcessor } from '../services/macro-processor.js';
 import { LorebookActivator } from '../services/lorebook-activator.js';
 import { getProvider } from '../services/provider-factory.js';
@@ -191,14 +191,14 @@ router.post('/:id/characters', asyncHandler(async (req, res) => {
 
     if (characterCard.data?.first_mes) {
       const settings = await storage.getSettings();
-      const deepseek = new DeepSeekAPI(settings.apiKey || 'dummy');
+      const promptBuilder = new PromptBuilder();
       const macroProcessor = new MacroProcessor({
         userName: persona?.name || 'User',
         charName: characterCard.data?.name || 'Character'
       });
 
       let processed = characterCard.data.first_mes;
-      processed = deepseek.replacePlaceholders(processed, characterCard, persona);
+      processed = promptBuilder.replacePlaceholders(processed, characterCard, persona);
       processed = macroProcessor.process(processed);
 
       processedFirstMessage = processed;
@@ -249,8 +249,8 @@ router.get('/:id/characters/:characterId/greetings', asyncHandler(async (req, re
   // Load settings for filtering
   const settings = await storage.getSettings();
 
-  // Initialize processors (API key not needed for text processing)
-  const deepseek = new DeepSeekAPI(settings.apiKey || 'dummy');
+  // Initialize processors for text processing
+  const promptBuilder = new PromptBuilder();
   const macroProcessor = new MacroProcessor({
     userName: persona?.name || 'User',
     charName: characterCard.data?.name || 'Character'
@@ -262,7 +262,7 @@ router.get('/:id/characters/:characterId/greetings', asyncHandler(async (req, re
   // Add first_mes as first greeting
   if (characterCard.data?.first_mes) {
     let processed = characterCard.data.first_mes;
-    processed = deepseek.replacePlaceholders(processed, characterCard, persona);
+    processed = promptBuilder.replacePlaceholders(processed, characterCard, persona);
     processed = macroProcessor.process(processed);
 
     greetings.push({
@@ -277,7 +277,7 @@ router.get('/:id/characters/:characterId/greetings', asyncHandler(async (req, re
   if (characterCard.data?.alternate_greetings && Array.isArray(characterCard.data.alternate_greetings)) {
     characterCard.data.alternate_greetings.forEach((greeting, idx) => {
       let processed = greeting;
-      processed = deepseek.replacePlaceholders(processed, characterCard, persona);
+      processed = promptBuilder.replacePlaceholders(processed, characterCard, persona);
       processed = macroProcessor.process(processed);
 
       greetings.push({

@@ -5,7 +5,7 @@
  */
 
 import { LLMProvider } from './base-provider.js';
-import { MacroProcessor } from '../macro-processor.js';
+import { PromptBuilder } from '../prompt-builder.js';
 
 export class AIHordeProvider extends LLMProvider {
   constructor(config) {
@@ -34,6 +34,12 @@ export class AIHordeProvider extends LLMProvider {
     this.excludeModelPatterns = [
       "tinyllama", "debug", "-1b", "-270m", "test"
     ];
+
+    // Initialize prompt builder with AI Horde-specific configuration
+    this.promptBuilder = new PromptBuilder({
+      maxContextChars: 6000, // Smaller default, will be overridden dynamically
+      includeDetailedPerspective: false // Use condensed perspective instructions
+    });
   }
 
   /**
@@ -65,225 +71,17 @@ export class AIHordeProvider extends LLMProvider {
   }
 
   /**
-   * Replace template placeholders
-   */
-  replacePlaceholders(text, characterCard, persona) {
-    if (!text) return text;
-
-    let result = text;
-
-    // Replace {{user}} with persona name
-    const userName = persona?.name || "User";
-    result = result.replace(/\{\{user\}\}/gi, userName);
-
-    // Replace {{char}} and {{character}} with character name
-    const charName = characterCard?.data?.name || "Character";
-    result = result.replace(/\{\{char\}\}/gi, charName);
-    result = result.replace(/\{\{character\}\}/gi, charName);
-
-    return result;
-  }
-
-  /**
-   * Filter asterisks from text
-   */
-  filterAsterisks(text, shouldFilter) {
-    if (!text || !shouldFilter) return text;
-    return text.replace(/\*/g, "");
-  }
-
-  /**
-   * Build system prompt from context (similar to DeepSeek but adapted for Horde)
+   * Build system prompt from context
    */
   buildSystemPrompt(context) {
-    const { persona, characterCards, activatedLorebooks, story, settings = {} } = context;
-    const characterCard = characterCards && characterCards.length === 1 ? characterCards[0] : null;
-    const allCharacterCards = characterCards && characterCards.length > 1 ? characterCards : null;
-
-    let prompt =
-      "You are a creative writing assistant helping to write a novel-style story.\n\n";
-
-    // Initialize macro processor with context
-    const macroProcessor = new MacroProcessor({
-      userName: persona?.name || 'User',
-      charName: characterCard?.data?.name || (allCharacterCards && allCharacterCards.length > 0 ? allCharacterCards[0].data?.name : 'Character')
-    });
-
-    // If we have multiple characters (for continue/custom), add all of them
-    if (allCharacterCards && allCharacterCards.length > 0) {
-      const filterAst = true;
-
-      prompt += "=== CHARACTER PROFILES ===\n\n";
-
-      allCharacterCards.forEach((card, index) => {
-        const char = card.data;
-
-        if (index > 0) prompt += "\n---\n\n";
-
-        prompt += `Character ${index + 1}: ${char.name}\n`;
-
-        if (char.description) {
-          let processed = this.replacePlaceholders(char.description, card, persona);
-          processed = macroProcessor.process(processed);
-          prompt += `Description: ${this.filterAsterisks(processed, filterAst)}\n`;
-        }
-
-        if (char.personality) {
-          let processed = this.replacePlaceholders(char.personality, card, persona);
-          processed = macroProcessor.process(processed);
-          prompt += `Personality: ${this.filterAsterisks(processed, filterAst)}\n`;
-        }
-
-        if (char.scenario && allCharacterCards.length === 1) {
-          let processed = this.replacePlaceholders(char.scenario, card, persona);
-          processed = macroProcessor.process(processed);
-          prompt += `Scenario: ${this.filterAsterisks(processed, filterAst)}\n`;
-        }
-      });
-
-      prompt += "\n";
-    } else if (characterCard && characterCard.data) {
-      // Single character
-      const char = characterCard.data;
-      const filterAst = true;
-
-      prompt += "=== CHARACTER PROFILE ===\n";
-      prompt += `Name: ${char.name}\n`;
-
-      if (char.description) {
-        let processed = this.replacePlaceholders(char.description, characterCard, persona);
-        processed = macroProcessor.process(processed);
-        prompt += `Description: ${this.filterAsterisks(processed, filterAst)}\n`;
-      }
-
-      if (char.personality) {
-        let processed = this.replacePlaceholders(char.personality, characterCard, persona);
-        processed = macroProcessor.process(processed);
-        prompt += `Personality: ${this.filterAsterisks(processed, filterAst)}\n`;
-      }
-
-      if (char.scenario) {
-        let processed = this.replacePlaceholders(char.scenario, characterCard, persona);
-        processed = macroProcessor.process(processed);
-        prompt += `\nCurrent Scenario: ${this.filterAsterisks(processed, filterAst)}\n`;
-      }
-
-      if (char.mes_example && settings.includeDialogueExamples !== false) {
-        let processed = this.replacePlaceholders(char.mes_example, characterCard, persona);
-        processed = macroProcessor.process(processed);
-        prompt += `\n=== DIALOGUE STYLE EXAMPLES ===\n${this.filterAsterisks(processed, filterAst)}\n`;
-      }
-    }
-
-    // Add lorebook entries
-    if (activatedLorebooks && activatedLorebooks.length > 0) {
-      const filterAst = true;
-      prompt += `\n=== WORLD INFORMATION ===\n\n`;
-
-      activatedLorebooks.forEach((entry, index) => {
-        if (index > 0) prompt += '\n\n';
-        let content = macroProcessor.process(entry.content);
-        content = this.filterAsterisks(content, filterAst);
-        prompt += content;
-      });
-
-      prompt += '\n';
-    }
-
-    // Add user persona
-    if (persona && persona.name) {
-      const filterAst = true;
-      prompt += `\n=== USER CHARACTER (PERSONA) ===\n`;
-      prompt += `Name: ${persona.name}\n`;
-
-      if (persona.description) {
-        let processed = this.replacePlaceholders(persona.description, characterCard, persona);
-        processed = macroProcessor.process(processed);
-        prompt += `Description: ${this.filterAsterisks(processed, filterAst)}\n`;
-      }
-
-      if (persona.writingStyle) {
-        let processed = this.replacePlaceholders(persona.writingStyle, characterCard, persona);
-        processed = macroProcessor.process(processed);
-        prompt += `Writing Style: ${this.filterAsterisks(processed, filterAst)}\n`;
-      }
-    }
-
-    prompt += `\n=== INSTRUCTIONS ===\n`;
-    prompt += `Write in a narrative, novel-style format with proper paragraphs and dialogue.\n`;
-    prompt += `Maintain consistency with established characters and plot.\n`;
-    prompt += `Focus on showing rather than telling, with vivid descriptions and natural dialogue.\n`;
-    prompt += `Write in third-person past tense perspective.\n`;
-    prompt += `Do not use asterisks (*) for actions. Write everything as prose.\n`;
-
-    return prompt;
+    return this.promptBuilder.buildSystemPrompt(context);
   }
 
   /**
    * Build generation prompt based on type
    */
   buildGenerationPrompt(type, params) {
-    const { storyContent, characterName, customInstruction, templateText, maxChars } = params;
-
-    let storyContext = "";
-    let instruction = "";
-
-    // Use provided maxChars or calculate from model context windows
-    // Note: maxChars should be calculated before calling this method using calculateDynamicContextLimit()
-    const charLimit = maxChars || 6000;  // Fallback to 6000 chars (~2048 tokens with overhead)
-
-    // Use template text if provided, otherwise use defaults
-    if (templateText) {
-      instruction = templateText;
-      if (characterName) {
-        instruction = instruction.replace(/\{\{charName\}\}/g, characterName);
-      }
-      if (customInstruction) {
-        instruction = instruction.replace(/\{\{instruction\}\}/g, customInstruction);
-      }
-      if (storyContent) {
-        instruction = instruction.replace(/\{\{storyContent\}\}/g, storyContent);
-      }
-
-      // If template doesn't use {{storyContent}}, add story context separately
-      if (storyContent && storyContent.trim() && !templateText.includes('{{storyContent}}')) {
-        let contentToInclude = storyContent;
-        if (contentToInclude.length > charLimit) {
-          contentToInclude = "..." + contentToInclude.slice(-charLimit);
-        }
-        storyContext = `Here is the current story so far:\n\n${contentToInclude}\n\n---\n\n`;
-      }
-    } else {
-      // Default templates - always add story context
-      if (storyContent && storyContent.trim()) {
-        let contentToInclude = storyContent;
-        if (contentToInclude.length > charLimit) {
-          contentToInclude = "..." + contentToInclude.slice(-charLimit);
-        }
-        storyContext = `Here is the current story so far:\n\n${contentToInclude}\n\n---\n\n`;
-      }
-
-      switch (type) {
-        case "continue":
-          instruction =
-            "Continue the story naturally from where it left off. Write the next 2-3 paragraphs maximum.";
-          break;
-
-        case "character":
-          const charName = characterName || "the character";
-          instruction = `Write the next part of the story from ${charName}'s perspective. Write 2-3 paragraphs maximum.`;
-          break;
-
-        case "custom":
-          instruction = customInstruction || "Continue the story.";
-          break;
-
-        default:
-          instruction = "Continue the story.";
-      }
-    }
-
-    return storyContext + instruction;
+    return this.promptBuilder.buildGenerationPrompt(type, params);
   }
 
   /**
