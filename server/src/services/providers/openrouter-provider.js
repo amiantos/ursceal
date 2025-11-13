@@ -28,7 +28,7 @@ export class OpenRouterProvider extends LLMProvider {
   getCapabilities() {
     return {
       streaming: true,
-      reasoning: false, // Most models don't support reasoning
+      reasoning: true, // Supported by some models (e.g., DeepSeek R1)
       visionAPI: true,  // Many OpenRouter models support vision
       maxContextWindow: 200000 // Varies by model, using conservative default
     };
@@ -119,6 +119,7 @@ export class OpenRouterProvider extends LLMProvider {
 
     return {
       content: choice.message.content || "",
+      reasoning: choice.message.reasoning_content || "",
       usage: data.usage,
       metadata: {
         model: data.model, // Actual model used (may differ from requested)
@@ -216,6 +217,7 @@ export class OpenRouterProvider extends LLMProvider {
                 const delta = data.choices[0].delta;
 
                 yield {
+                  reasoning: delta.reasoning_content || null,
                   content: delta.content || null,
                   finished: data.choices[0].finish_reason !== null,
                   usage: data.usage || null

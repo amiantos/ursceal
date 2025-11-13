@@ -53,7 +53,7 @@ export const PROVIDER_METADATA = {
   },
   openrouter: {
     name: 'OpenRouter (multi-model)',
-    supportsReasoning: false,
+    supportsReasoning: true,
     supportsStreaming: true
   }
 }
