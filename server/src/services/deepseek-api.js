@@ -62,7 +62,7 @@ export class DeepSeekAPI {
 
     // If we have multiple characters (for continue/custom), add all of them
     if (allCharacterCards && allCharacterCards.length > 0) {
-      const filterAst = settings.filterAsterisks;
+      const filterAst = true; // Always filter asterisks (core feature)
 
       prompt += "=== CHARACTER PROFILES ===\n\n";
 
@@ -97,7 +97,7 @@ export class DeepSeekAPI {
     } else if (characterCard && characterCard.data) {
       // Single character (for character-based generation)
       const char = characterCard.data;
-      const filterAst = settings.filterAsterisks;
+      const filterAst = true; // Always filter asterisks (core feature)
 
       // Note: system_prompt is intentionally ignored (too directive for novel writing)
 
@@ -162,7 +162,7 @@ export class DeepSeekAPI {
 
     // Add lorebook entries (after character profiles)
     if (lorebookEntries && lorebookEntries.length > 0) {
-      const filterAst = settings.filterAsterisks;
+      const filterAst = true; // Always filter asterisks (core feature)
 
       prompt += `\n=== WORLD INFORMATION ===\n\n`;
 
@@ -189,7 +189,7 @@ export class DeepSeekAPI {
 
     // Add user persona
     if (persona && persona.name) {
-      const filterAst = settings.filterAsterisks;
+      const filterAst = true; // Always filter asterisks (core feature)
 
       prompt += `\n=== USER CHARACTER (PERSONA) ===\n`;
       prompt += `Name: ${persona.name}\n`;
@@ -226,19 +226,15 @@ export class DeepSeekAPI {
     prompt += `Maintain consistency with established characters and plot.\n`;
     prompt += `Focus on showing rather than telling, with vivid descriptions and natural dialogue.\n`;
 
-    // Add third-person past tense instructions
-    if (settings.thirdPerson) {
-      prompt += `\n=== PERSPECTIVE ===\n`;
-      prompt += `Write in third-person past tense perspective.\n`;
-      prompt += `Use he/she/they pronouns and past tense verbs (said, walked, thought, etc.).\n`;
-      prompt += `Do NOT use first-person (I, me, my, we) or present tense.\n`;
-      prompt += `All narrative and dialogue tags should be in past tense.\n`;
-    }
+    // Add third-person past tense instructions (core feature - always enabled)
+    prompt += `\n=== PERSPECTIVE ===\n`;
+    prompt += `Write in third-person past tense perspective.\n`;
+    prompt += `Use he/she/they pronouns and past tense verbs (said, walked, thought, etc.).\n`;
+    prompt += `Do NOT use first-person (I, me, my, we) or present tense.\n`;
+    prompt += `All narrative and dialogue tags should be in past tense.\n`;
 
-    // Add asterisk filtering instruction
-    if (settings.filterAsterisks) {
-      prompt += `\nDo not use asterisks (*) for actions. Write everything as prose.\n`;
-    }
+    // Add asterisk filtering instruction (core feature - always enabled)
+    prompt += `\nDo not use asterisks (*) for actions. Write everything as prose.\n`;
 
     return prompt;
   }

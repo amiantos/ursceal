@@ -437,9 +437,9 @@ async function streamGeneration(res, deepseek, prompt, options, settings) {
 
   // Stream chunks
   for await (const chunk of stream) {
-    // Apply asterisk filtering server-side
+    // Apply asterisk filtering server-side (core feature - always enabled)
     let processedContent = chunk.content || null;
-    if (processedContent && settings.filterAsterisks) {
+    if (processedContent) {
       processedContent = processedContent.replace(/\*/g, '');
     }
 

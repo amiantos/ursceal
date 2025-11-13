@@ -19,6 +19,34 @@
     <!-- Main Content -->
     <div v-else class="detail-content">
       <div class="sections-container">
+        <!-- Display Settings Section -->
+        <section class="edit-section">
+          <div class="section-header">
+            <h2>Display Settings</h2>
+          </div>
+          <div class="section-content">
+            <div class="checkbox-group">
+              <label class="checkbox-label">
+                <input type="checkbox" v-model="settings.showReasoning" />
+                <span>Show reasoning panel</span>
+              </label>
+              <p class="help-text">
+                Display the model's thinking process alongside generated content.
+              </p>
+            </div>
+
+            <div class="checkbox-group">
+              <label class="checkbox-label">
+                <input type="checkbox" v-model="settings.autoSave" />
+                <span>Auto-save document</span>
+              </label>
+              <p class="help-text">
+                Automatically save your work every 30 seconds.
+              </p>
+            </div>
+          </div>
+        </section>
+
         <!-- Default Persona Section -->
         <section class="edit-section">
           <div class="section-header">
@@ -104,72 +132,6 @@
               />
               <p class="help-text">
                 Controls randomness: 0.0 (deterministic) to 1.5 (creative). Recommended for creative writing: 1.5
-              </p>
-            </div>
-          </div>
-        </section>
-
-        <!-- Display Settings Section -->
-        <section class="edit-section">
-          <div class="section-header">
-            <h2>Display Settings</h2>
-          </div>
-          <div class="section-content">
-            <div class="checkbox-group">
-              <label class="checkbox-label">
-                <input type="checkbox" v-model="settings.showReasoning" />
-                <span>Show reasoning panel</span>
-              </label>
-              <p class="help-text">
-                Display the model's thinking process alongside generated content.
-              </p>
-            </div>
-
-            <div class="checkbox-group">
-              <label class="checkbox-label">
-                <input type="checkbox" v-model="settings.autoSave" />
-                <span>Auto-save document</span>
-              </label>
-              <p class="help-text">
-                Automatically save your work every 30 seconds.
-              </p>
-            </div>
-
-            <div class="checkbox-group">
-              <label class="checkbox-label">
-                <input type="checkbox" v-model="settings.showPrompt" />
-                <span>Show prompt viewer</span>
-              </label>
-              <p class="help-text">
-                Display a button to view the full prompt sent to the API.
-              </p>
-            </div>
-          </div>
-        </section>
-
-        <!-- Writing Style Settings Section -->
-        <section class="edit-section">
-          <div class="section-header">
-            <h2>Writing Style Settings</h2>
-          </div>
-          <div class="section-content">
-            <div class="checkbox-group">
-              <label class="checkbox-label">
-                <input type="checkbox" v-model="settings.thirdPerson" />
-                <span>Enforce third-person past tense</span>
-              </label>
-              <p class="help-text">
-                Write in third-person past tense perspective (he/she/they said, walked, etc.). No present tense or first person.
-              </p>
-            </div>
-
-            <div class="checkbox-group">
-              <label class="checkbox-label">
-                <input type="checkbox" v-model="settings.filterAsterisks" />
-                <span>Filter asterisks (*)</span>
-              </label>
-              <p class="help-text">
-                Remove asterisks from character cards and generated content (common in RP chats but not novel-style writing).
               </p>
             </div>
 
@@ -277,9 +239,6 @@ const settings = ref({
   temperature: 1.5,
   showReasoning: false,
   autoSave: true,
-  showPrompt: false,
-  thirdPerson: true,
-  filterAsterisks: true,
   includeDialogueExamples: true,
   lorebookScanDepth: 2000,
   lorebookTokenBudget: 1800,
@@ -333,9 +292,6 @@ async function loadSettings() {
       temperature: serverSettings.temperature ?? 1.5,
       showReasoning: serverSettings.showReasoning ?? false,
       autoSave: serverSettings.autoSave ?? true,
-      showPrompt: serverSettings.showPrompt ?? false,
-      thirdPerson: serverSettings.thirdPerson ?? true,
-      filterAsterisks: serverSettings.filterAsterisks ?? true,
       includeDialogueExamples: serverSettings.includeDialogueExamples ?? true,
       lorebookScanDepth: serverSettings.lorebookScanDepth ?? 2000,
       lorebookTokenBudget: serverSettings.lorebookTokenBudget ?? 1800,
