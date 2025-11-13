@@ -596,11 +596,12 @@ router.post('/:id/continue', asyncHandler(async (req, res) => {
 
   // Create abort controller for cancellation support
   const abortController = new AbortController();
+  console.log(`[Continue] Starting generation for story ${storyId}${characterId ? ` (character: ${characterId})` : ''}`);
 
   // Handle client disconnection
   req.on('close', () => {
     if (!res.writableEnded) {
-      console.log('Client disconnected, aborting generation');
+      console.log('[Continue] Client disconnected, aborting generation');
       abortController.abort();
     }
   });
@@ -612,10 +613,10 @@ router.post('/:id/continue', asyncHandler(async (req, res) => {
     }, abortController.signal);
   } catch (error) {
     if (error.message === 'Generation cancelled' || abortController.signal.aborted) {
-      console.log('Generation was cancelled');
+      console.log('[Continue] Generation was cancelled by user');
       res.write(`data: ${JSON.stringify({ cancelled: true })}\n\n`);
     } else {
-      console.error('Generation error:', error);
+      console.error('[Continue] Generation error:', error);
       res.write(`data: ${JSON.stringify({ error: error.message })}\n\n`);
     }
     res.end();
@@ -638,11 +639,12 @@ router.post('/:id/continue-with-instruction', asyncHandler(async (req, res) => {
 
   // Create abort controller for cancellation support
   const abortController = new AbortController();
+  console.log(`[Continue-with-Instruction] Starting generation for story ${storyId}`);
 
   // Handle client disconnection
   req.on('close', () => {
     if (!res.writableEnded) {
-      console.log('Client disconnected, aborting generation');
+      console.log('[Continue-with-Instruction] Client disconnected, aborting generation');
       abortController.abort();
     }
   });
@@ -654,10 +656,10 @@ router.post('/:id/continue-with-instruction', asyncHandler(async (req, res) => {
     }, abortController.signal);
   } catch (error) {
     if (error.message === 'Generation cancelled' || abortController.signal.aborted) {
-      console.log('Generation was cancelled');
+      console.log('[Continue-with-Instruction] Generation was cancelled by user');
       res.write(`data: ${JSON.stringify({ cancelled: true })}\n\n`);
     } else {
-      console.error('Generation error:', error);
+      console.error('[Continue-with-Instruction] Generation error:', error);
       res.write(`data: ${JSON.stringify({ error: error.message })}\n\n`);
     }
     res.end();
@@ -675,11 +677,12 @@ router.post('/:id/rewrite-third-person', asyncHandler(async (req, res) => {
 
   // Create abort controller for cancellation support
   const abortController = new AbortController();
+  console.log(`[Rewrite] Starting third-person rewrite for story ${storyId}`);
 
   // Handle client disconnection
   req.on('close', () => {
     if (!res.writableEnded) {
-      console.log('Client disconnected, aborting generation');
+      console.log('[Rewrite] Client disconnected, aborting generation');
       abortController.abort();
     }
   });
@@ -690,10 +693,10 @@ router.post('/:id/rewrite-third-person', asyncHandler(async (req, res) => {
     }, abortController.signal);
   } catch (error) {
     if (error.message === 'Generation cancelled' || abortController.signal.aborted) {
-      console.log('Generation was cancelled');
+      console.log('[Rewrite] Generation was cancelled by user');
       res.write(`data: ${JSON.stringify({ cancelled: true })}\n\n`);
     } else {
-      console.error('Generation error:', error);
+      console.error('[Rewrite] Generation error:', error);
       res.write(`data: ${JSON.stringify({ error: error.message })}\n\n`);
     }
     res.end();

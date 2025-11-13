@@ -219,6 +219,7 @@ export class AIHordeProvider extends LLMProvider {
    * @returns {Promise<Object>} Any partial results that were generated
    */
   async cancelRequest(requestId) {
+    console.log(`[AI Horde] Cancelling request ${requestId}...`);
     const response = await fetch(`${this.baseURL}/generate/text/status/${requestId}`, {
       method: "DELETE",
       headers: {
@@ -228,12 +229,14 @@ export class AIHordeProvider extends LLMProvider {
 
     if (!response.ok) {
       const errorData = await response.json().catch(() => ({}));
+      console.error(`[AI Horde] Cancel request failed: ${response.statusText}`);
       throw new Error(
         errorData.message || `AI Horde cancel request failed: ${response.statusText}`
       );
     }
 
     const data = await response.json();
+    console.log(`[AI Horde] Request ${requestId} cancelled successfully`);
     return {
       finished: data.done || false,
       faulted: data.faulted || false,
@@ -306,6 +309,7 @@ export class AIHordeProvider extends LLMProvider {
       while (true) {
         // Check if aborted
         if (options.signal?.aborted) {
+          console.log(`[AI Horde] Abort signal detected for request ${requestId}`);
           await this.cancelRequest(requestId);
           throw new Error('Generation cancelled');
         }
@@ -354,10 +358,11 @@ export class AIHordeProvider extends LLMProvider {
     } catch (error) {
       // Clean up request on error
       if (error.message !== 'Generation cancelled') {
+        console.log(`[AI Horde] Error during generation, cleaning up request ${requestId}`);
         try {
           await this.cancelRequest(requestId);
         } catch (cancelError) {
-          // Ignore errors during cleanup
+          console.error(`[AI Horde] Failed to cleanup request: ${cancelError.message}`);
         }
       }
       throw error;
