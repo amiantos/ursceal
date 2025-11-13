@@ -197,6 +197,26 @@ export class AIHordeProvider extends LLMProvider {
    * Generate text (non-streaming, with polling)
    */
   async generate(systemPrompt, userPrompt, options = {}) {
+    // Failsafe: If no models configured, auto-select suitable models
+    if (!this.config.models || this.config.models.length === 0) {
+      console.log('No models configured, auto-selecting models...');
+      try {
+        const availableModels = await this.getAvailableModels();
+        const selectedModels = this.autoSelectModels(availableModels);
+
+        if (selectedModels.length > 0) {
+          // Temporarily use auto-selected models for this request
+          // Don't modify the config - just use them for this generation
+          this.config.models = selectedModels;
+          console.log(`Auto-selected ${selectedModels.length} models for generation`);
+        } else {
+          throw new Error('No suitable AI Horde models available. Please configure models manually.');
+        }
+      } catch (error) {
+        throw new Error(`Failed to auto-select models: ${error.message}`);
+      }
+    }
+
     // Calculate dynamic context limit if models are configured
     if (!options.maxContextLength && this.config.models && this.config.models.length > 0) {
       const limits = await this.calculateDynamicContextLimit(
