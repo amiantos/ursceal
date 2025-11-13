@@ -7,6 +7,7 @@ import { v4 as uuidv4 } from 'uuid';
 import { asyncHandler } from '../middleware/error-handler.js';
 import { StorageService } from '../services/storage.js';
 import { getDefaultPresets } from '../services/default-presets.js';
+import { AIHordeProvider } from '../services/providers/aihorde-provider.js';
 
 const router = express.Router();
 
@@ -151,6 +152,64 @@ router.post('/initialize-defaults', asyncHandler(async (req, res) => {
     success: true,
     presets: createdPresets
   });
+}));
+
+// Get available AI Horde models (with caching)
+let hordeModelsCache = null;
+let hordeCacheTime = 0;
+const CACHE_DURATION = 5 * 60 * 1000; // 5 minutes
+
+router.get('/aihorde/models', asyncHandler(async (req, res) => {
+  const now = Date.now();
+
+  // Return cached data if still valid
+  if (hordeModelsCache && (now - hordeCacheTime) < CACHE_DURATION) {
+    return res.json({
+      models: hordeModelsCache,
+      cached: true,
+      cacheAge: Math.floor((now - hordeCacheTime) / 1000)
+    });
+  }
+
+  // Fetch fresh data
+  try {
+    // Create temporary provider instance (API key not required for public endpoints)
+    const provider = new AIHordeProvider({ apiKey: '0000000000' });
+    const models = await provider.getAvailableModels();
+    const autoSelected = provider.autoSelectModels(models);
+
+    // Update cache
+    hordeModelsCache = models;
+    hordeCacheTime = now;
+
+    res.json({
+      models,
+      autoSelected,  // Array of recommended model names
+      cached: false
+    });
+  } catch (error) {
+    console.error('Failed to fetch AI Horde models:', error);
+    res.status(500).json({
+      error: 'Failed to fetch models from AI Horde',
+      message: error.message
+    });
+  }
+}));
+
+// Get AI Horde worker data (for context limit calculations)
+router.get('/aihorde/workers', asyncHandler(async (req, res) => {
+  try {
+    const provider = new AIHordeProvider({ apiKey: '0000000000' });
+    const workers = await provider.getWorkerData();
+
+    res.json({ workers });
+  } catch (error) {
+    console.error('Failed to fetch AI Horde workers:', error);
+    res.status(500).json({
+      error: 'Failed to fetch workers from AI Horde',
+      message: error.message
+    });
+  }
 }));
 
 export default router;

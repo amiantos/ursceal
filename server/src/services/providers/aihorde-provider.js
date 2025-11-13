@@ -13,8 +13,8 @@ export class AIHordeProvider extends LLMProvider {
     const hordeConfig = {
       ...config,
       baseURL: config.baseURL || "https://aihorde.net/api/v2",
-      models: config.models || ["Mythomax 13B", "Noromaid 20B"],
-      workerBlacklist: config.workerBlacklist || [],
+      models: config.models || [],  // Empty = use auto-selected models
+      workers: config.workers || [],
       trustedWorkers: config.trustedWorkers || false,
       slowWorkers: config.slowWorkers !== false // Default true
     };
@@ -22,6 +22,18 @@ export class AIHordeProvider extends LLMProvider {
     super(hordeConfig);
 
     this.pollingInterval = 2000; // Poll every 2 seconds
+
+    // Default model patterns (for auto-selection)
+    this.defaultModelPatterns = [
+      "llama-3", "llama3", "mistral", "mixtral", "qwen2.5", "deepseek",
+      "gemma", "magnum", "mythomax", "noromaid", "hermes", "wizard",
+      "airoboros", "chronos", "stheno", "euryale", "fimbulvetr"
+    ];
+
+    // Patterns to exclude from auto-selection
+    this.excludeModelPatterns = [
+      "tinyllama", "debug", "-1b", "-270m", "test"
+    ];
   }
 
   /**
@@ -211,18 +223,22 @@ export class AIHordeProvider extends LLMProvider {
    * Build generation prompt based on type
    */
   buildGenerationPrompt(type, params) {
-    const { storyContent, characterName, customInstruction, templateText } = params;
+    const { storyContent, characterName, customInstruction, templateText, maxChars } = params;
 
     let storyContext = "";
     let instruction = "";
 
-    // AI Horde has smaller context windows, limit to ~32k chars (~8k tokens)
+    // Use provided maxChars or calculate from model context windows
+    // Note: maxChars should be calculated before calling this method using calculateDynamicContextLimit()
+    const charLimit = maxChars || 6000;  // Fallback to 6000 chars (~2048 tokens with overhead)
+
     if (storyContent && storyContent.trim()) {
-      const maxChars = 32000;
-      const contentToInclude =
-        storyContent.length > maxChars
-          ? "..." + storyContent.slice(-maxChars)
-          : storyContent;
+      let contentToInclude = storyContent;
+
+      // Truncate if needed, preserving the end of the story
+      if (contentToInclude.length > charLimit) {
+        contentToInclude = "..." + contentToInclude.slice(-charLimit);
+      }
 
       storyContext = `Here is the current story so far:\n\n${contentToInclude}\n\n---\n\n`;
     }
@@ -269,29 +285,42 @@ export class AIHordeProvider extends LLMProvider {
     // Combine system and user prompts (AI Horde uses single prompt)
     const fullPrompt = `${systemPrompt}\n\n${userPrompt}`;
 
+    // Build params object
+    const params = {
+      n: 1,
+      max_length: options.maxTokens || 150,
+      max_context_length: options.maxContextLength || 2048,
+      temperature: options.temperature !== undefined ? options.temperature : 0.7,
+      rep_pen: 1.1,  // Repetition penalty
+      rep_pen_range: 320,
+      sampler_order: [6, 0, 1, 3, 4, 2, 5],
+      use_default_badwordsids: true,  // Prevent EOS token issues
+    };
+
+    // Add stop sequences if provided
+    if (options.stopSequences && options.stopSequences.length > 0) {
+      params.stop_sequence = options.stopSequences;
+    }
+
+    // Build base payload
     const payload = {
       prompt: fullPrompt,
-      params: {
-        n: 1,
-        max_length: options.maxTokens || 512,  // AI Horde typically allows less
-        max_context_length: 8192,
-        temperature: options.temperature !== undefined ? options.temperature : 1.0,
-        rep_pen: 1.1,  // Repetition penalty
-        rep_pen_range: 320,
-        sampler_order: [6, 0, 1, 3, 4, 2, 5],
-        frmtadsnsp: true, // Format for adventure/story
-        frmtrmblln: false,
-        frmtrmspch: false,
-        frmttriminc: false,
-        quiet: false
-      },
-      models: this.config.models || ["Mythomax 13B"],
-      workers: [],
-      worker_blacklist: this.config.workerBlacklist || [],
-      trusted_workers: this.config.trustedWorkers || false,
-      slow_workers: this.config.slowWorkers !== false,
-      dry_run: false
+      params: params,
+      models: this.config.models || []  // Empty array = any available model
     };
+
+    // Only add optional fields if explicitly configured
+    if (this.config.workers && this.config.workers.length > 0) {
+      payload.workers = this.config.workers;
+    }
+
+    if (this.config.trustedWorkers === true) {
+      payload.trusted_workers = true;
+    }
+
+    if (this.config.slowWorkers === false) {
+      payload.slow_workers = false;
+    }
 
     const response = await fetch(`${this.baseURL}/generate/text/async`, {
       method: "POST",
@@ -347,6 +376,15 @@ export class AIHordeProvider extends LLMProvider {
    * Generate text (non-streaming, with polling)
    */
   async generate(systemPrompt, userPrompt, options = {}) {
+    // Calculate dynamic context limit if models are configured
+    if (!options.maxContextLength && this.config.models && this.config.models.length > 0) {
+      const limits = await this.calculateDynamicContextLimit(
+        this.config.models,
+        options.maxTokens || 150
+      );
+      options.maxContextLength = limits.maxContextLength;
+    }
+
     // Submit request
     const requestId = await this.submitRequest(systemPrompt, userPrompt, options);
 
@@ -370,8 +408,10 @@ export class AIHordeProvider extends LLMProvider {
       if (status.finished && status.generations.length > 0) {
         // Extract result
         const generation = status.generations[0];
+        // Strip leading newlines from response
+        const cleanedText = (generation.text || "").replace(/^\n+/, "");
         return {
-          content: generation.text || "",
+          content: cleanedText,
           reasoning: null, // AI Horde doesn't provide reasoning
           usage: {
             totalTokens: generation.kudos || 0
@@ -427,9 +467,11 @@ export class AIHordeProvider extends LLMProvider {
       if (status.finished && status.generations.length > 0) {
         // Yield final result
         const generation = status.generations[0];
+        // Strip leading newlines from response
+        const cleanedText = (generation.text || "").replace(/^\n+/, "");
         yield {
           type: 'complete',
-          content: generation.text || "",
+          content: cleanedText,
           metadata: {
             requestId,
             model: generation.model,
@@ -480,5 +522,154 @@ export class AIHordeProvider extends LLMProvider {
     }
 
     return super.parseError(error);
+  }
+
+  /**
+   * Fetch available models from AI Horde
+   * @returns {Promise<Array>} Array of model objects with metadata
+   */
+  async getAvailableModels() {
+    try {
+      const response = await fetch(`${this.baseURL}/status/models?type=text`, {
+        method: "GET",
+        headers: {
+          "apikey": this.apiKey,
+        }
+      });
+
+      if (!response.ok) {
+        throw new Error(`Failed to fetch models: ${response.statusText}`);
+      }
+
+      const models = await response.json();
+
+      // Transform and enrich model data
+      return models.map(model => ({
+        name: model.name,
+        count: model.count || 0,  // Number of workers running this model
+        performance: model.performance || 0,
+        queued: model.queued || 0,
+        eta: model.eta || 0,
+        type: model.type || 'text'
+      })).sort((a, b) => b.count - a.count);  // Sort by worker count
+    } catch (error) {
+      console.error('Failed to fetch AI Horde models:', error);
+      return [];
+    }
+  }
+
+  /**
+   * Fetch worker data from AI Horde
+   * @returns {Promise<Array>} Array of worker objects with capabilities
+   */
+  async getWorkerData() {
+    try {
+      const response = await fetch(`${this.baseURL}/workers?type=text`, {
+        method: "GET",
+        headers: {
+          "apikey": this.apiKey,
+        }
+      });
+
+      if (!response.ok) {
+        throw new Error(`Failed to fetch workers: ${response.statusText}`);
+      }
+
+      const workers = await response.json();
+
+      return workers.map(worker => ({
+        id: worker.id,
+        name: worker.name,
+        models: worker.models || [],
+        max_context_length: worker.max_context_length || 2048,
+        max_length: worker.max_length || 512,
+        online: worker.online || false,
+        trusted: worker.trusted || false,
+        performance: worker.performance || 0
+      })).filter(w => w.online);  // Only return online workers
+    } catch (error) {
+      console.error('Failed to fetch AI Horde workers:', error);
+      return [];
+    }
+  }
+
+  /**
+   * Auto-select good models based on availability and patterns
+   * @param {Array} availableModels - Models from getAvailableModels()
+   * @returns {Array} Selected model names
+   */
+  autoSelectModels(availableModels) {
+    if (!availableModels || availableModels.length === 0) {
+      return [];
+    }
+
+    const selected = [];
+
+    // Filter out excluded models first
+    const filtered = availableModels.filter(model => {
+      const nameLower = model.name.toLowerCase();
+      return !this.excludeModelPatterns.some(pattern =>
+        nameLower.includes(pattern.toLowerCase())
+      );
+    });
+
+    // Select models matching default patterns
+    for (const model of filtered) {
+      const nameLower = model.name.toLowerCase();
+      const matches = this.defaultModelPatterns.some(pattern =>
+        nameLower.includes(pattern.toLowerCase())
+      );
+
+      if (matches && model.count > 0) {  // Must have at least one worker
+        selected.push(model.name);
+      }
+    }
+
+    // If no matches, just use the top 3 available models by worker count
+    if (selected.length === 0 && filtered.length > 0) {
+      selected.push(...filtered.slice(0, 3).map(m => m.name));
+    }
+
+    return selected;
+  }
+
+  /**
+   * Calculate dynamic context limit based on selected models
+   * @param {Array} modelNames - Array of model names
+   * @param {number} maxTokens - Max tokens to generate
+   * @returns {Promise<Object>} Object with maxContextLength and maxChars
+   */
+  async calculateDynamicContextLimit(modelNames, maxTokens = 150) {
+    // Default fallback
+    let maxContextLength = 2048;
+
+    if (modelNames && modelNames.length > 0) {
+      try {
+        const workers = await this.getWorkerData();
+
+        // Find workers that support at least one of our selected models
+        const relevantWorkers = workers.filter(worker =>
+          worker.models.some(model => modelNames.includes(model))
+        );
+
+        if (relevantWorkers.length > 0) {
+          // Use minimum context length across all relevant workers
+          maxContextLength = Math.min(
+            ...relevantWorkers.map(w => w.max_context_length || 2048)
+          );
+        }
+      } catch (error) {
+        console.error('Failed to calculate dynamic context limit:', error);
+      }
+    }
+
+    // Calculate max characters using Kobold Lite's formula
+    // Leave room for generation and overhead
+    const maxChars = Math.floor((maxContextLength * 3.0) - (maxTokens * 3.5) - 100);
+
+    return {
+      maxContextLength,
+      maxChars: Math.max(1000, maxChars)  // Minimum 1000 chars
+    };
   }
 }

@@ -395,7 +395,7 @@ async function generate(isCustom, instruction, characterId) {
     generating.value = true
     generationStatus.value = 'Thinking...'
     reasoning.value = ''
-    showReasoningPanel.value = shouldShowReasoning.value
+    showReasoningPanel.value = false  // Only open when reasoning is actually received
 
     // Track cursor position
     const cursorPos = editorRef.value.selectionStart
@@ -419,15 +419,33 @@ async function generate(isCustom, instruction, characterId) {
         }
       }
 
+      // Handle queue status (AI Horde)
+      if (chunk.queueStatus) {
+        const { position, waitTime, finished, faulted } = chunk.queueStatus
+        if (faulted) {
+          generationStatus.value = 'Queue error'
+        } else if (finished) {
+          generationStatus.value = 'Processing...'
+        } else if (position === 0) {
+          generationStatus.value = `Generating... (ETA: ${waitTime}s)`
+        } else {
+          generationStatus.value = `In queue: position ${position} (ETA: ${waitTime}s)`
+        }
+      }
+
       // Handle reasoning
       if (chunk.reasoning) {
+        // Only open panel on first reasoning data if setting is enabled
+        if (!showReasoningPanel.value && shouldShowReasoning.value) {
+          showReasoningPanel.value = true
+        }
         reasoningText += chunk.reasoning
         reasoning.value = reasoningText
       }
 
       // Handle content
       if (chunk.content) {
-        if (generationStatus.value === 'Thinking...') {
+        if (generationStatus.value === 'Thinking...' || generationStatus.value.includes('queue') || generationStatus.value.includes('Processing')) {
           generationStatus.value = 'Writing...'
         }
 
@@ -496,7 +514,7 @@ async function rewriteToThirdPerson() {
     generating.value = true
     generationStatus.value = 'Thinking...'
     reasoning.value = ''
-    showReasoningPanel.value = shouldShowReasoning.value
+    showReasoningPanel.value = false  // Only open when reasoning is actually received
 
     // Clear editor for rewrite
     content.value = ''
@@ -516,15 +534,33 @@ async function rewriteToThirdPerson() {
         }
       }
 
+      // Handle queue status (AI Horde)
+      if (chunk.queueStatus) {
+        const { position, waitTime, finished, faulted } = chunk.queueStatus
+        if (faulted) {
+          generationStatus.value = 'Queue error'
+        } else if (finished) {
+          generationStatus.value = 'Processing...'
+        } else if (position === 0) {
+          generationStatus.value = `Generating... (ETA: ${waitTime}s)`
+        } else {
+          generationStatus.value = `In queue: position ${position} (ETA: ${waitTime}s)`
+        }
+      }
+
       // Handle reasoning
       if (chunk.reasoning) {
+        // Only open panel on first reasoning data if setting is enabled
+        if (!showReasoningPanel.value && shouldShowReasoning.value) {
+          showReasoningPanel.value = true
+        }
         reasoningText += chunk.reasoning
         reasoning.value = reasoningText
       }
 
       // Handle content
       if (chunk.content) {
-        if (generationStatus.value === 'Thinking...') {
+        if (generationStatus.value === 'Thinking...' || generationStatus.value.includes('queue') || generationStatus.value.includes('Processing')) {
           generationStatus.value = 'Rewriting...'
         }
 

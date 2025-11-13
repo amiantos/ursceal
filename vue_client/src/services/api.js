@@ -421,6 +421,15 @@ export const presetsAPI = {
       method: 'POST',
     })
   },
+
+  // AI Horde specific methods
+  getAIHordeModels() {
+    return request('/presets/aihorde/models')
+  },
+
+  getAIHordeWorkers() {
+    return request('/presets/aihorde/workers')
+  },
 }
 
 export default {
