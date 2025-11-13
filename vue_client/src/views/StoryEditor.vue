@@ -46,14 +46,6 @@
         </button>
         <button
           class="icon-btn"
-          @click="saveStory"
-          :title="hasUnsavedChanges ? 'Save changes' : 'All changes saved'"
-        >
-          <i v-if="hasUnsavedChanges" class="fas fa-floppy-disk"></i>
-          <i v-else class="fas fa-check"></i>
-        </button>
-        <button
-          class="icon-btn"
           @click="goToSettings"
           title="Settings"
         >
@@ -93,6 +85,14 @@
 
         <!-- Toolbar Buttons -->
         <div v-else class="toolbar-main-buttons">
+          <button
+            class="btn btn-secondary icon-btn"
+            @click="saveStory"
+            :title="hasUnsavedChanges ? 'Save changes' : 'All changes saved'"
+          >
+            <i v-if="hasUnsavedChanges" class="fas fa-floppy-disk"></i>
+            <i v-else class="fas fa-check"></i>
+          </button>
           <button
             class="btn btn-primary"
             :disabled="!story || storyCharacters.length === 0"
