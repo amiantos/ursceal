@@ -4,8 +4,145 @@
  */
 
 import { v4 as uuidv4 } from 'uuid';
+import { readFile } from 'fs/promises';
+import { join, dirname } from 'path';
+import { fileURLToPath } from 'url';
 import { StorageService } from './storage.js';
 import { getDefaultPresets, createPresetFromSettings } from './default-presets.js';
+import { CharacterParser } from './character-parser.js';
+import { LorebookParser } from './lorebook-parser.js';
+import { PromptBuilder } from './prompt-builder.js';
+import { MacroProcessor } from './macro-processor.js';
+
+const __filename = fileURLToPath(import.meta.url);
+const __dirname = dirname(__filename);
+const PROJECT_ROOT = join(__dirname, '../../..');
+
+/**
+ * Import default character from project root
+ * @param {StorageService} storage - Storage service instance
+ * @returns {Promise<Object|null>} Character info or null if failed
+ */
+async function importDefaultCharacter(storage) {
+  try {
+    const defaultCharacterPath = join(PROJECT_ROOT, 'default_Seraphina.png');
+
+    // Read the character PNG file
+    const fileBuffer = await readFile(defaultCharacterPath);
+
+    // Parse character card from PNG
+    const cardData = await CharacterParser.parseCard(fileBuffer);
+    const characterId = uuidv4();
+
+    // Check for embedded lorebook
+    let embeddedLorebook = null;
+    let lorebookId = null;
+    if (cardData.data?.character_book && cardData.data.character_book.entries && cardData.data.character_book.entries.length > 0) {
+      try {
+        // Parse embedded lorebook
+        const lorebookData = LorebookParser.parseEmbeddedLorebook(cardData.data.character_book);
+
+        // Give it a name based on the character
+        lorebookData.name = `${cardData.data.name}'s Lorebook`;
+        lorebookData.description = lorebookData.description || `Lorebook for ${cardData.data.name}`;
+
+        // Save to global lorebook library
+        lorebookId = uuidv4();
+        await storage.saveLorebook(lorebookId, lorebookData);
+
+        embeddedLorebook = {
+          id: lorebookId,
+          name: lorebookData.name,
+          entryCount: lorebookData.entries.length
+        };
+
+        console.log(`✓ Extracted embedded lorebook from ${cardData.data.name}: ${lorebookData.entries.length} entries`);
+      } catch (error) {
+        console.error('Failed to parse embedded lorebook:', error);
+      }
+    }
+
+    // Add lorebook association to character data
+    if (!cardData.data.extensions) {
+      cardData.data.extensions = {};
+    }
+    cardData.data.extensions.ursceal_lorebook_id = lorebookId;
+
+    // Save character data and image
+    await storage.saveCharacter(characterId, cardData, fileBuffer);
+
+    console.log(`✓ Imported default character: ${cardData.data.name}`);
+
+    return {
+      id: characterId,
+      name: cardData.data?.name || 'Unknown',
+      embeddedLorebook: embeddedLorebook
+    };
+  } catch (error) {
+    console.error('Failed to import default character:', error.message);
+    return null;
+  }
+}
+
+/**
+ * Create a default story with the imported character
+ * @param {StorageService} storage - Storage service instance
+ * @param {Object} character - Imported character info
+ * @returns {Promise<Object|null>} Story info or null if failed
+ */
+async function createDefaultStory(storage, character) {
+  if (!character || !character.id) {
+    return null;
+  }
+
+  try {
+    const story = await storage.createStory(
+      `A Story with ${character.name}`,
+      `An adventure featuring ${character.name}`
+    );
+
+    // Add character to story
+    await storage.addCharacterToStory(story.id, character.id);
+
+    // Add lorebook if character has one
+    if (character.embeddedLorebook && character.embeddedLorebook.id) {
+      await storage.addLorebookToStory(story.id, character.embeddedLorebook.id);
+      console.log(`✓ Associated lorebook with story: ${character.embeddedLorebook.name}`);
+    }
+
+    // Insert character's first message into story content
+    try {
+      const characterCard = await storage.getCharacter(character.id);
+      if (characterCard.data?.first_mes) {
+        const promptBuilder = new PromptBuilder();
+        const macroProcessor = new MacroProcessor({
+          userName: 'User',
+          charName: characterCard.data?.name || 'Character'
+        });
+
+        let processed = characterCard.data.first_mes;
+        processed = promptBuilder.replacePlaceholders(processed, characterCard, null);
+        processed = macroProcessor.process(processed);
+
+        await storage.updateStoryContent(story.id, processed);
+        console.log(`✓ Added character's first message to story content`);
+      }
+    } catch (error) {
+      console.error('Failed to process first message:', error.message);
+      // Don't fail story creation if this fails
+    }
+
+    console.log(`✓ Created default story: ${story.title}`);
+
+    return {
+      id: story.id,
+      title: story.title
+    };
+  } catch (error) {
+    console.error('Failed to create default story:', error.message);
+    return null;
+  }
+}
 
 /**
  * Check if migration is needed
@@ -48,6 +185,9 @@ export async function migrate(storage) {
   console.log('=== Starting Configuration Migration ===');
 
   try {
+    // Ensure storage directories exist before migration
+    await storage.initializeStorage();
+
     const shouldMigrate = await needsMigration(storage);
 
     if (!shouldMigrate) {
@@ -109,8 +249,8 @@ export async function migrate(storage) {
         provider: presetData.provider
       });
 
-      // If no default set yet and this is deepseek, set it as default
-      if (!defaultPresetId && key === 'deepseek') {
+      // If no default set yet and this is aihorde, set it as default (free option)
+      if (!defaultPresetId && key === 'aihorde') {
         defaultPresetId = presetId;
         await storage.setDefaultPresetId(presetId);
       }
@@ -124,6 +264,20 @@ export async function migrate(storage) {
       await storage.setDefaultPresetId(defaultPresetId);
     }
 
+    // Import default character on fresh install
+    let importedCharacter = null;
+    let defaultStory = null;
+    if (!hasExistingConfig) {
+      console.log('Importing default character...');
+      importedCharacter = await importDefaultCharacter(storage);
+
+      // Create default story with the imported character
+      if (importedCharacter) {
+        console.log('Creating default story...');
+        defaultStory = await createDefaultStory(storage, importedCharacter);
+      }
+    }
+
     console.log('=== Migration Complete ===');
     console.log(`Created ${createdPresets.length} presets`);
     console.log(`Default preset ID: ${defaultPresetId}`);
@@ -134,6 +288,8 @@ export async function migrate(storage) {
       presetsCreated: createdPresets.length,
       defaultPresetId,
       presets: createdPresets,
+      importedCharacter,
+      defaultStory,
       message: hasExistingConfig
         ? 'Migrated existing configuration to preset system'
         : 'Created default presets for fresh installation'

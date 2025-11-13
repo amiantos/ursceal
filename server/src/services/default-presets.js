@@ -44,7 +44,7 @@ export function getDefaultPresets() {
       apiConfig: {
         apiKey: "0000000000", // Default anonymous key
         baseURL: "https://aihorde.net/api/v2",
-        models: ["Mythomax 13B", "Noromaid 20B"], // Preferred models in order
+        models: [], // Empty by default - users should select from available models
         workerBlacklist: [],
         trustedWorkers: false,
         slowWorkers: true
