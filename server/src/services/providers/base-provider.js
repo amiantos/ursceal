@@ -2,6 +2,9 @@
  * Base abstract class for LLM providers
  * All provider implementations must extend this class and implement its methods
  */
+
+import { PromptBuilder } from '../prompt-builder.js';
+
 export class LLMProvider {
   /**
    * @param {Object} config - Provider configuration
@@ -19,6 +22,9 @@ export class LLMProvider {
     this.apiKey = config.apiKey;
     this.baseURL = config.baseURL;
     this.model = config.model;
+
+    // Initialize shared prompt builder - subclasses can override if needed
+    this.promptBuilder = new PromptBuilder();
   }
 
   /**
@@ -51,9 +57,10 @@ export class LLMProvider {
    * @param {Array} context.activatedLorebooks - Activated lorebook entries
    * @param {Object} context.story - Story object
    * @returns {string} System prompt
+   * @deprecated Use buildPrompts() instead for better context management
    */
   buildSystemPrompt(context) {
-    throw new Error("buildSystemPrompt() must be implemented by subclass");
+    return this.promptBuilder.buildSystemPrompt(context);
   }
 
   /**
@@ -65,9 +72,34 @@ export class LLMProvider {
    * @param {string} [params.customInstruction] - Custom instruction for 'custom' type
    * @param {Object} params.templateText - Prompt template text to use
    * @returns {string} User prompt
+   * @deprecated Use buildPrompts() instead for better context management
    */
   buildGenerationPrompt(type, params) {
-    throw new Error("buildGenerationPrompt() must be implemented by subclass");
+    return this.promptBuilder.buildGenerationPrompt(type, params);
+  }
+
+  /**
+   * Build both system and user prompts with context management
+   *
+   * This is the PRIMARY method for building prompts. It provides default implementation
+   * that works for most providers. Subclasses can override if they need custom logic.
+   *
+   * @param {Object} context - Generation context
+   * @param {string} generationType - Type of generation (continue, character, custom)
+   * @param {Object} customParams - Custom parameters (characterName, customInstruction, etc.)
+   * @param {Object} preset - Preset configuration
+   * @returns {Object|Promise<Object>} { system: string, user: string }
+   */
+  buildPrompts(context, generationType, customParams, preset) {
+    const maxContextTokens = preset.generationSettings?.maxContextTokens || 128000;
+    const maxGenerationTokens = preset.generationSettings?.maxTokens || 4000;
+
+    return this.promptBuilder.buildPrompts(context, {
+      maxContextTokens,
+      maxGenerationTokens,
+      generationType,
+      ...customParams
+    });
   }
 
   /**

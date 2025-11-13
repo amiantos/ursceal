@@ -1,9 +1,12 @@
 <template>
-  <div class="provider-config">
-    <!-- API Configuration -->
-    <section class="form-section">
-      <h3 class="section-title">API Configuration</h3>
-
+  <BaseProviderConfig
+    :config="config"
+    @update:config="$emit('update:config', $event)"
+    :show-max-context="true"
+    :context-range="{ min: 2000, max: 16000 }"
+    :context-help-text="`Context window fallback (2k-16k tokens). Automatically calculated based on selected models and their worker availability.`"
+  >
+    <template #api-config>
       <div class="form-group">
         <label for="apiKey">API Key</label>
         <input
@@ -100,204 +103,13 @@
       >
         {{ showAdvancedApiConfig ? 'Hide' : 'Show' }} Advanced API Options
       </button>
-    </section>
-
-    <!-- Generation Settings -->
-    <section class="form-section">
-      <h3 class="section-title">Generation Settings</h3>
-
-      <div class="form-group">
-        <label for="maxTokens">
-          Max Tokens: {{ localGenerationSettings.maxTokens }}
-        </label>
-        <input
-          id="maxTokens"
-          v-model.number="localGenerationSettings.maxTokens"
-          type="range"
-          min="100"
-          max="8000"
-          step="100"
-          class="range-input"
-        />
-        <small class="help-text">Maximum tokens to generate (100-8000)</small>
-      </div>
-
-      <div class="form-group">
-        <label for="temperature">
-          Temperature: {{ localGenerationSettings.temperature.toFixed(2) }}
-        </label>
-        <input
-          id="temperature"
-          v-model.number="localGenerationSettings.temperature"
-          type="range"
-          min="0"
-          max="2"
-          step="0.05"
-          class="range-input"
-        />
-        <small class="help-text">Creativity/randomness (0 = focused, 2 = creative)</small>
-      </div>
-
-      <div class="form-group">
-        <label for="maxContextTokens">
-          Max Context Tokens: {{ (localGenerationSettings.maxContextTokens / 1000).toFixed(0) }}k
-        </label>
-        <input
-          id="maxContextTokens"
-          v-model.number="localGenerationSettings.maxContextTokens"
-          type="range"
-          min="2000"
-          max="16000"
-          step="1000"
-          class="range-input"
-        />
-        <small class="help-text">
-          Context window fallback (2k-16k tokens). Automatically calculated based on selected models and their worker availability.
-        </small>
-      </div>
-
-      <div class="form-group checkbox-group">
-        <label>
-          <input
-            type="checkbox"
-            v-model="localGenerationSettings.includeDialogueExamples"
-          />
-          Include dialogue examples from character cards
-        </label>
-      </div>
-    </section>
-
-    <!-- Lorebook Settings -->
-    <section class="form-section">
-      <h3 class="section-title">Lorebook Settings</h3>
-
-      <div class="form-group">
-        <label for="scanDepth">
-          Scan Depth: {{ localLorebookSettings.scanDepth }} tokens
-        </label>
-        <input
-          id="scanDepth"
-          v-model.number="localLorebookSettings.scanDepth"
-          type="range"
-          min="500"
-          max="4000"
-          step="100"
-          class="range-input"
-        />
-        <small class="help-text">How much of the story to scan for keywords</small>
-      </div>
-
-      <div class="form-group">
-        <label for="tokenBudget">
-          Token Budget: {{ localLorebookSettings.tokenBudget }} tokens
-        </label>
-        <input
-          id="tokenBudget"
-          v-model.number="localLorebookSettings.tokenBudget"
-          type="range"
-          min="500"
-          max="4000"
-          step="100"
-          class="range-input"
-        />
-        <small class="help-text">Maximum tokens for lorebook content</small>
-      </div>
-
-      <div class="form-group">
-        <label for="recursionDepth">
-          Recursion Depth: {{ localLorebookSettings.recursionDepth }}
-        </label>
-        <input
-          id="recursionDepth"
-          v-model.number="localLorebookSettings.recursionDepth"
-          type="range"
-          min="0"
-          max="5"
-          step="1"
-          class="range-input"
-        />
-        <small class="help-text">How many levels of cascading entries to allow</small>
-      </div>
-
-      <div class="form-group checkbox-group">
-        <label>
-          <input
-            type="checkbox"
-            v-model="localLorebookSettings.enableRecursion"
-          />
-          Enable recursive activation
-        </label>
-        <small class="help-text">Allow lorebook entries to trigger other entries</small>
-      </div>
-    </section>
-
-    <!-- Prompt Templates (Optional/Advanced) -->
-    <div v-if="showPromptTemplates">
-      <section class="form-section">
-        <h3 class="section-title">Prompt Templates (Advanced)</h3>
-        <p class="section-description">
-          Customize the instructions sent to the AI. Use <code v-text="'{{char}}'"></code>,
-          <code v-text="'{{instruction}}'"></code>, and <code v-text="'{{storyContent}}'"></code> as placeholders.
-        </p>
-
-        <div class="form-group">
-          <label for="templateContinue">Continue Template</label>
-          <textarea
-            id="templateContinue"
-            v-model="localPromptTemplates.continue"
-            class="textarea-input"
-            rows="3"
-            placeholder="Continue the story naturally..."
-          ></textarea>
-        </div>
-
-        <div class="form-group">
-          <label for="templateCharacter">Character Response Template</label>
-          <textarea
-            id="templateCharacter"
-            v-model="localPromptTemplates.character"
-            class="textarea-input"
-            rows="3"
-            placeholder="Write from {char}'s perspective..."
-          ></textarea>
-        </div>
-
-        <div class="form-group">
-          <label for="templateInstruction">Custom Instruction Template</label>
-          <textarea
-            id="templateInstruction"
-            v-model="localPromptTemplates.instruction"
-            class="textarea-input"
-            rows="2"
-            placeholder="{instruction}"
-          ></textarea>
-        </div>
-
-        <div class="form-group">
-          <label for="templateRewrite">Rewrite to Third Person Template</label>
-          <textarea
-            id="templateRewrite"
-            v-model="localPromptTemplates.rewriteThirdPerson"
-            class="textarea-input"
-            rows="3"
-            placeholder="Rewrite to third person..."
-          ></textarea>
-        </div>
-      </section>
-    </div>
-
-    <button
-      type="button"
-      class="btn-link"
-      @click="showPromptTemplates = !showPromptTemplates"
-    >
-      {{ showPromptTemplates ? 'Hide' : 'Show' }} Prompt Templates (Advanced)
-    </button>
-  </div>
+    </template>
+  </BaseProviderConfig>
 </template>
 
 <script setup>
 import { ref, computed } from 'vue'
+import BaseProviderConfig from './shared/BaseProviderConfig.vue'
 import { presetsAPI } from '../../services/api'
 import { useToast } from '../../composables/useToast'
 
@@ -313,7 +125,6 @@ const emit = defineEmits(['update:config'])
 const toast = useToast()
 
 const showAdvancedApiConfig = ref(false)
-const showPromptTemplates = ref(false)
 
 // AI Horde model selection state
 const availableHordeModels = ref([])
@@ -321,40 +132,13 @@ const loadingHordeModels = ref(false)
 const hordeModelsError = ref(null)
 const recommendedHordeModels = ref([])
 
-// Create local computed properties for each section that syncs with parent
+// Local computed for API config
 const localApiConfig = computed({
   get() {
     return props.config.apiConfig || {}
   },
   set(value) {
     emit('update:config', { ...props.config, apiConfig: value })
-  }
-})
-
-const localGenerationSettings = computed({
-  get() {
-    return props.config.generationSettings || {}
-  },
-  set(value) {
-    emit('update:config', { ...props.config, generationSettings: value })
-  }
-})
-
-const localLorebookSettings = computed({
-  get() {
-    return props.config.lorebookSettings || {}
-  },
-  set(value) {
-    emit('update:config', { ...props.config, lorebookSettings: value })
-  }
-})
-
-const localPromptTemplates = computed({
-  get() {
-    return props.config.promptTemplates || {}
-  },
-  set(value) {
-    emit('update:config', { ...props.config, promptTemplates: value })
   }
 })
 
@@ -413,24 +197,14 @@ function isModelSelected(modelName) {
 </script>
 
 <style scoped>
-.provider-config {
-  margin-bottom: 1rem;
+.form-group {
+  margin-bottom: 1.25rem;
 }
 
-.form-section {
-  margin-bottom: 2rem;
-  padding-bottom: 2rem;
-  border-bottom: 1px solid var(--border-color);
-}
-
-.form-section:last-child {
-  border-bottom: none;
-}
-
-.section-title {
-  margin: 0 0 0.5rem 0;
-  font-size: 1.2rem;
-  font-weight: 600;
+.form-group label {
+  display: block;
+  margin-bottom: 0.5rem;
+  font-weight: 500;
   color: var(--text-primary);
 }
 
@@ -448,40 +222,7 @@ function isModelSelected(modelName) {
   line-height: 1.5;
 }
 
-.section-description code {
-  background-color: var(--bg-tertiary);
-  padding: 0.15rem 0.4rem;
-  border-radius: 3px;
-  font-family: monospace;
-  font-size: 0.85em;
-  color: var(--text-primary);
-}
-
-.form-group {
-  margin-bottom: 1.25rem;
-}
-
-.form-group label {
-  display: block;
-  margin-bottom: 0.5rem;
-  font-weight: 500;
-  color: var(--text-primary);
-}
-
-.checkbox-group label {
-  display: flex;
-  align-items: center;
-  gap: 0.5rem;
-  font-weight: normal;
-}
-
-.checkbox-group input[type="checkbox"] {
-  width: auto;
-  margin: 0;
-}
-
-.text-input,
-.textarea-input {
+.text-input {
   width: 100%;
   padding: 0.6rem;
   background-color: var(--bg-tertiary);
@@ -492,36 +233,9 @@ function isModelSelected(modelName) {
   font-family: inherit;
 }
 
-.text-input:focus,
-.textarea-input:focus {
+.text-input:focus {
   outline: none;
   border-color: var(--accent-primary);
-}
-
-.range-input {
-  width: 100%;
-  height: 6px;
-  border-radius: 3px;
-  background: var(--border-color);
-  outline: none;
-}
-
-.range-input::-webkit-slider-thumb {
-  appearance: none;
-  width: 18px;
-  height: 18px;
-  border-radius: 50%;
-  background: var(--accent-primary);
-  cursor: pointer;
-}
-
-.range-input::-moz-range-thumb {
-  width: 18px;
-  height: 18px;
-  border-radius: 50%;
-  background: var(--accent-primary);
-  cursor: pointer;
-  border: none;
 }
 
 .help-text {
@@ -551,6 +265,35 @@ function isModelSelected(modelName) {
   gap: 0.75rem;
   margin-bottom: 1rem;
   flex-wrap: wrap;
+}
+
+.btn {
+  padding: 0.6rem 1.2rem;
+  border: none;
+  border-radius: 4px;
+  font-size: 0.9rem;
+  font-weight: 500;
+  cursor: pointer;
+  transition: all 0.2s;
+}
+
+.btn-primary {
+  background-color: var(--accent-primary);
+  color: white;
+}
+
+.btn-primary:hover {
+  opacity: 0.9;
+}
+
+.btn-secondary {
+  background-color: var(--bg-tertiary);
+  color: var(--text-primary);
+  border: 1px solid var(--border-color);
+}
+
+.btn-secondary:hover {
+  background-color: var(--bg-quaternary);
 }
 
 .btn-small {

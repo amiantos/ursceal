@@ -4,7 +4,6 @@
  */
 
 import { LLMProvider } from './base-provider.js';
-import { PromptBuilder } from '../prompt-builder.js';
 
 export class DeepSeekProvider extends LLMProvider {
   constructor(config) {
@@ -16,9 +15,7 @@ export class DeepSeekProvider extends LLMProvider {
     };
 
     super(deepseekConfig);
-
-    // Initialize prompt builder (no provider-specific config needed)
-    this.promptBuilder = new PromptBuilder();
+    // promptBuilder is now initialized in base class
   }
 
   /**
@@ -47,41 +44,8 @@ export class DeepSeekProvider extends LLMProvider {
     return { valid: true };
   }
 
-  /**
-   * Build both system and user prompts with context management
-   * @param {Object} context - Generation context
-   * @param {string} generationType - Type of generation (continue, character, custom)
-   * @param {Object} customParams - Custom parameters (characterName, customInstruction, etc.)
-   * @param {Object} preset - Preset configuration
-   * @returns {Object} { system: string, user: string }
-   */
-  buildPrompts(context, generationType, customParams, preset) {
-    const maxContextTokens = preset.generationSettings?.maxContextTokens || 128000;
-    const maxGenerationTokens = preset.generationSettings?.maxTokens || 4000;
-
-    return this.promptBuilder.buildPrompts(context, {
-      maxContextTokens,
-      maxGenerationTokens,
-      generationType,
-      ...customParams
-    });
-  }
-
-  /**
-   * @deprecated Use buildPrompts() instead
-   * Build system prompt from context
-   */
-  buildSystemPrompt(context) {
-    return this.promptBuilder.buildSystemPrompt(context);
-  }
-
-  /**
-   * @deprecated Use buildPrompts() instead
-   * Build generation prompt based on type
-   */
-  buildGenerationPrompt(type, params) {
-    return this.promptBuilder.buildGenerationPrompt(type, params);
-  }
+  // buildPrompts() is now inherited from base class
+  // No need to override unless custom logic is required
 
   /**
    * Generate content without streaming

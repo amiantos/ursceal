@@ -5,7 +5,6 @@
  */
 
 import { LLMProvider } from './base-provider.js';
-import { PromptBuilder } from '../prompt-builder.js';
 
 export class AIHordeProvider extends LLMProvider {
   constructor(config) {
@@ -20,6 +19,7 @@ export class AIHordeProvider extends LLMProvider {
     };
 
     super(hordeConfig);
+    // promptBuilder is now initialized in base class
 
     this.pollingInterval = 2000; // Poll every 2 seconds
 
@@ -34,9 +34,6 @@ export class AIHordeProvider extends LLMProvider {
     this.excludeModelPatterns = [
       "tinyllama", "debug", "-1b", "-270m", "test"
     ];
-
-    // Initialize prompt builder (no provider-specific config needed)
-    this.promptBuilder = new PromptBuilder();
   }
 
   /**
@@ -69,7 +66,7 @@ export class AIHordeProvider extends LLMProvider {
 
   /**
    * Build both system and user prompts with context management
-   * For AI Horde, dynamically calculates context limit based on worker availability
+   * OVERRIDES base implementation for AI Horde-specific dynamic context calculation
    * @param {Object} context - Generation context
    * @param {string} generationType - Type of generation (continue, character, custom)
    * @param {Object} customParams - Custom parameters (characterName, customInstruction, etc.)
@@ -80,7 +77,7 @@ export class AIHordeProvider extends LLMProvider {
     const maxGenerationTokens = preset.generationSettings?.maxTokens || 512;
     let maxContextTokens = preset.generationSettings?.maxContextTokens || 8192;
 
-    // If models are configured, calculate dynamic context limit based on workers
+    // AI Horde-specific: Calculate dynamic context limit based on worker availability
     if (preset.apiConfig?.models && preset.apiConfig.models.length > 0) {
       try {
         const { maxContextLength } = await this.calculateDynamicContextLimit(
@@ -99,22 +96,6 @@ export class AIHordeProvider extends LLMProvider {
       generationType,
       ...customParams
     });
-  }
-
-  /**
-   * @deprecated Use buildPrompts() instead
-   * Build system prompt from context
-   */
-  buildSystemPrompt(context) {
-    return this.promptBuilder.buildSystemPrompt(context);
-  }
-
-  /**
-   * @deprecated Use buildPrompts() instead
-   * Build generation prompt based on type
-   */
-  buildGenerationPrompt(type, params) {
-    return this.promptBuilder.buildGenerationPrompt(type, params);
   }
 
   /**
