@@ -126,10 +126,17 @@ export class AIHordeProvider extends LLMProvider {
     // Combine system and user prompts (AI Horde uses single prompt)
     const fullPrompt = `${systemPrompt}\n\n${userPrompt}`;
 
+    // AI Horde has a maximum of 1024 tokens for max_length
+    const maxTokens = Math.min(options.maxTokens || 150, 1024);
+
+    if (options.maxTokens && options.maxTokens > 1024) {
+      console.warn(`[AI Horde] Requested maxTokens (${options.maxTokens}) exceeds AI Horde limit. Capping at 1024.`);
+    }
+
     // Build params object with configurable samplers
     const params = {
       n: 1,
-      max_length: options.maxTokens || 150,
+      max_length: maxTokens,
       max_context_length: options.maxContextLength || 2048,
       temperature: options.temperature !== undefined ? options.temperature : 0.7,
       // Now configurable via options (with fallback to defaults)
@@ -196,6 +203,8 @@ export class AIHordeProvider extends LLMProvider {
       payload.slow_workers = false;
     }
 
+    console.log('[AI Horde] Submitting request with payload:', JSON.stringify(payload, null, 2));
+
     const response = await fetch(`${this.baseURL}/generate/text/async`, {
       method: "POST",
       headers: {
@@ -208,9 +217,22 @@ export class AIHordeProvider extends LLMProvider {
 
     if (!response.ok) {
       const errorData = await response.json().catch(() => ({}));
-      throw new Error(
-        errorData.message || `AI Horde API request failed: ${response.statusText}`
-      );
+      console.error('[AI Horde] Request failed with status:', response.status, response.statusText);
+      console.error('[AI Horde] Error response:', JSON.stringify(errorData, null, 2));
+      console.error('[AI Horde] Payload that was sent:', JSON.stringify(payload, null, 2));
+
+      // Build a detailed error message
+      let errorMessage = errorData.message || `AI Horde API request failed: ${response.statusText}`;
+
+      // If there are specific validation errors, include them
+      if (errorData.errors && typeof errorData.errors === 'object') {
+        const errorDetails = Object.entries(errorData.errors)
+          .map(([field, message]) => `${field}: ${message}`)
+          .join(', ');
+        errorMessage += ` (${errorDetails})`;
+      }
+
+      throw new Error(errorMessage);
     }
 
     const data = await response.json();
