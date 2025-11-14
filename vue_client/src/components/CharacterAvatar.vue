@@ -1,6 +1,14 @@
 <template>
   <!-- Multi-character mode -->
   <div v-if="isMultiMode" class="character-avatar-group">
+    <!-- Show empty avatar if no characters -->
+    <div
+      v-if="displayedCharacters.length === 0"
+      class="character-avatar stacked empty"
+    >
+      <i class="fas fa-user"></i>
+    </div>
+    <!-- Show character avatars -->
     <div
       v-for="(char, index) in displayedCharacters"
       :key="char?.id || index"
