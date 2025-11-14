@@ -160,6 +160,7 @@ router.post('/initialize-defaults', asyncHandler(async (req, res) => {
 
 // Get available AI Horde models (with caching)
 let hordeModelsCache = null;
+let hordeAutoSelectedCache = null;
 let hordeCacheTime = 0;
 const CACHE_DURATION = 5 * 60 * 1000; // 5 minutes
 
@@ -170,6 +171,7 @@ router.get('/aihorde/models', asyncHandler(async (req, res) => {
   if (hordeModelsCache && (now - hordeCacheTime) < CACHE_DURATION) {
     return res.json({
       models: hordeModelsCache,
+      autoSelected: hordeAutoSelectedCache,
       cached: true,
       cacheAge: Math.floor((now - hordeCacheTime) / 1000)
     });
@@ -184,6 +186,7 @@ router.get('/aihorde/models', asyncHandler(async (req, res) => {
 
     // Update cache
     hordeModelsCache = models;
+    hordeAutoSelectedCache = autoSelected;
     hordeCacheTime = now;
 
     res.json({
