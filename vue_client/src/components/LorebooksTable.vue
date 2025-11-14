@@ -7,7 +7,11 @@
   >
     <!-- Character avatars column -->
     <template #cell-characters="{ row }">
-      <CharacterAvatar v-if="row.characters && row.characters.length > 0" :characters="row.characters" />
+      <CharacterAvatar
+        v-if="row.characters && row.characters.length > 0"
+        :characters="row.characters"
+      />
+      <CharacterAvatar v-else :character="null" />
     </template>
 
     <!-- Actions column -->
