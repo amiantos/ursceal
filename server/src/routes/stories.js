@@ -391,6 +391,8 @@ async function loadGenerationContext(storyId) {
   for (const charId of story.characterIds || []) {
     try {
       const cardData = await storage.getCharacter(charId);
+      // Add the ID to the card so we can look it up later
+      cardData.id = charId;
       characterCards.push(cardData);
     } catch (error) {
       console.error(`Failed to load character ${charId}:`, error);
@@ -595,15 +597,12 @@ router.post('/:id/continue', asyncHandler(async (req, res) => {
   if (characterId) {
     // Character-specific generation
     generationType = 'character';
-    console.log('[Continue] Looking for characterId:', characterId);
-    console.log('[Continue] Available character cards:', characterCards.map(c => ({ id: c.id, name: c.data?.name })));
     const selectedChar = characterCards.find(c => c.data.name === characterId || c.id === characterId);
-    console.log('[Continue] Found character:', selectedChar ? selectedChar.data?.name : 'NOT FOUND');
     if (selectedChar) {
       characterName = selectedChar.data?.name;
       useCharacterCards = [selectedChar];
     } else {
-      console.error('[Continue] Character not found in characterCards!');
+      console.error(`[Continue] Character ${characterId} not found in story's character list`);
     }
   }
 
