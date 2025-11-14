@@ -296,8 +296,12 @@ export class PromptBuilder {
 
       // Replace placeholders in template
       if (characterName) {
+        console.log(`[PromptBuilder] Replacing {{char}} with: "${characterName}"`);
         instruction = instruction.replace(/\{\{charName\}\}/g, characterName);
         instruction = instruction.replace(/\{\{char\}\}/g, characterName);
+      } else {
+        console.log('[PromptBuilder] No characterName provided for template replacement');
+        console.log('[PromptBuilder] Template text:', templateText.substring(0, 100));
       }
       if (customInstruction) {
         instruction = instruction.replace(/\{\{instruction\}\}/g, customInstruction);
