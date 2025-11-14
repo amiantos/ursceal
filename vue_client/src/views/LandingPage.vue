@@ -256,16 +256,12 @@ const recentCharacters = computed(() => {
   // Get the last 15 recently modified stories
   const recentStories = stories.value.slice(0, 15)
 
-  // Extract all character IDs from these stories
+  // Extract all character IDs from these stories (excluding persona-only characters)
   const characterIds = new Set()
   recentStories.forEach(story => {
-    // Add characters from characterIds array
+    // Only add characters from characterIds array (not persona characters)
     if (story.characterIds) {
       story.characterIds.forEach(id => characterIds.add(id))
-    }
-    // Add persona character
-    if (story.personaCharacterId) {
-      characterIds.add(story.personaCharacterId)
     }
   })
 
