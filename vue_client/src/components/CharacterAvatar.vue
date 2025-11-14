@@ -5,11 +5,11 @@
       v-for="(char, index) in displayedCharacters"
       :key="char?.id || index"
       class="character-avatar stacked"
-      :class="{ empty: !char?.imageUrl }"
+      :class="{ empty: !getImageUrl(char) }"
       :style="{ zIndex: displayedCharacters.length - index }"
       :title="char?.name || 'Unknown'"
     >
-      <img v-if="char?.imageUrl" :src="char.imageUrl" :alt="char.name" />
+      <img v-if="getImageUrl(char)" :src="getImageUrl(char)" :alt="char.name" />
       <i v-else class="fas fa-user"></i>
     </div>
     <div
@@ -22,8 +22,8 @@
   </div>
 
   <!-- Single character mode -->
-  <div v-else class="character-avatar" :class="{ empty: !singleCharacter?.imageUrl }">
-    <img v-if="singleCharacter?.imageUrl" :src="singleCharacter.imageUrl" :alt="singleCharacter?.name" />
+  <div v-else class="character-avatar" :class="{ empty: !getImageUrl(singleCharacter) }">
+    <img v-if="getImageUrl(singleCharacter)" :src="getImageUrl(singleCharacter)" :alt="singleCharacter?.name" />
     <i v-else class="fas fa-user"></i>
   </div>
 </template>
@@ -67,6 +67,12 @@ const remainingCount = computed(() => {
   const total = props.characters.length
   return Math.max(0, total - props.maxDisplay)
 })
+
+// Prefer thumbnailUrl for avatars, fall back to imageUrl
+function getImageUrl(character) {
+  if (!character) return null
+  return character.thumbnailUrl || character.imageUrl || null
+}
 </script>
 
 <style scoped>

@@ -62,18 +62,18 @@ router.get('/', asyncHandler(async (req, res) => {
         );
         const totalWords = characterStories.reduce((sum, story) => sum + (story.wordCount || 0), 0);
 
-        // Check if thumbnail exists, fall back to full image
+        // Provide both full image and thumbnail URLs
         const hasThumbnail = await storage.hasCharacterThumbnail(char.id);
-        const imageUrl = hasThumbnail
-          ? `/api/characters/${char.id}/thumbnail`
-          : hasImage ? `/api/characters/${char.id}/image` : null;
+        const imageUrl = hasImage ? `/api/characters/${char.id}/image` : null;
+        const thumbnailUrl = hasThumbnail ? `/api/characters/${char.id}/thumbnail` : imageUrl;
 
         return {
           id: char.id,
           name: cardData.data?.name || 'Unknown',
           description: cardData.data?.description || '',
           tags: cardData.data?.tags || cardData.tags || [],
-          imageUrl,
+          imageUrl, // Full resolution for CharacterCard
+          thumbnailUrl, // Optimized thumbnail for CharacterAvatar
           created: cardData.metadata?.created || null,
           totalWords,
         };
