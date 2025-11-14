@@ -9,6 +9,39 @@
 
     <main class="app-main">
       <div class="landing-page">
+    <!-- Quick Access Section -->
+    <div v-if="!loadingStories && !loadingCharacters && recentCharacters.length > 0" class="quick-access-section">
+      <h3 class="quick-access-title">
+        <i class="fas fa-bolt"></i> Quick Access
+      </h3>
+      <div class="quick-access-scroll">
+        <div
+          v-for="character in recentCharacters"
+          :key="character.id"
+          class="quick-access-character"
+        >
+          <div class="character-card-portrait">
+            <img
+              v-if="character.imageUrl"
+              :src="character.imageUrl"
+              :alt="character.name"
+              class="character-avatar"
+            />
+            <div v-else class="character-avatar-placeholder">
+              <i class="fas fa-user"></i>
+            </div>
+          </div>
+          <div class="character-name">{{ character.name }}</div>
+          <button
+            class="btn btn-small btn-primary quick-continue-btn"
+            @click="showCharacterStories(character.id)"
+          >
+            <i class="fas fa-play"></i> Continue
+          </button>
+        </div>
+      </div>
+    </div>
+
     <Tabs v-model="activeTab" :tabs="tabs">
       <!-- Stories Tab -->
       <template #tab-stories>
@@ -229,6 +262,30 @@ const characterStoriesForModal = computed(() => {
     story.characterIds?.includes(selectedCharacter.value.id) ||
     story.personaCharacterId === selectedCharacter.value.id
   )
+})
+
+// Get characters from recently modified stories for quick access
+const recentCharacters = computed(() => {
+  // Get the last 5 recently modified stories
+  const recentStories = stories.value.slice(0, 5)
+
+  // Extract all character IDs from these stories
+  const characterIds = new Set()
+  recentStories.forEach(story => {
+    // Add characters from characterIds array
+    if (story.characterIds) {
+      story.characterIds.forEach(id => characterIds.add(id))
+    }
+    // Add persona character
+    if (story.personaCharacterId) {
+      characterIds.add(story.personaCharacterId)
+    }
+  })
+
+  // Map to full character objects and filter out any that don't exist
+  return Array.from(characterIds)
+    .map(id => characters.value.find(c => c.id === id))
+    .filter(char => char != null)
 })
 
 // Tabs configuration
@@ -613,5 +670,120 @@ function goToSettings() {
   text-align: center;
   padding: 2rem;
   color: var(--text-secondary);
+}
+
+/* Quick Access Section */
+.quick-access-section {
+  margin-bottom: 2rem;
+  background-color: var(--bg-secondary);
+  border-radius: 8px;
+  padding: 1.25rem;
+  border: 1px solid var(--border-color);
+}
+
+.quick-access-title {
+  margin: 0 0 1rem 0;
+  font-size: 1.125rem;
+  font-weight: 600;
+  color: var(--text-primary);
+  display: flex;
+  align-items: center;
+  gap: 0.5rem;
+}
+
+.quick-access-title i {
+  color: var(--primary-color);
+}
+
+.quick-access-scroll {
+  display: flex;
+  gap: 1rem;
+  overflow-x: auto;
+  overflow-y: hidden;
+  padding-bottom: 0.5rem;
+  scrollbar-width: thin;
+  scrollbar-color: var(--border-color) transparent;
+}
+
+.quick-access-scroll::-webkit-scrollbar {
+  height: 8px;
+}
+
+.quick-access-scroll::-webkit-scrollbar-track {
+  background: transparent;
+}
+
+.quick-access-scroll::-webkit-scrollbar-thumb {
+  background-color: var(--border-color);
+  border-radius: 4px;
+}
+
+.quick-access-scroll::-webkit-scrollbar-thumb:hover {
+  background-color: var(--text-secondary);
+}
+
+.quick-access-character {
+  flex-shrink: 0;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 0.5rem;
+  width: 140px;
+}
+
+.character-card-portrait {
+  width: 120px;
+  height: 180px;
+  border-radius: 8px;
+  overflow: hidden;
+  background-color: var(--bg-primary);
+  border: 2px solid var(--border-color);
+  box-shadow: var(--shadow-sm);
+  transition: all 0.2s;
+}
+
+.character-card-portrait:hover {
+  border-color: var(--primary-color);
+  box-shadow: var(--shadow);
+}
+
+.character-avatar {
+  width: 100%;
+  height: 100%;
+  object-fit: cover;
+  display: block;
+}
+
+.character-avatar-placeholder {
+  width: 100%;
+  height: 100%;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  color: var(--text-secondary);
+  font-size: 3rem;
+  background-color: var(--bg-tertiary);
+}
+
+.character-name {
+  font-size: 0.875rem;
+  font-weight: 500;
+  color: var(--text-primary);
+  text-align: center;
+  width: 100%;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+  padding: 0 0.25rem;
+}
+
+.quick-continue-btn {
+  width: 100%;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: 0.375rem;
+  font-size: 0.875rem;
+  padding: 0.5rem 0.75rem;
 }
 </style>
