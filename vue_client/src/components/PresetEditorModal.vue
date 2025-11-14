@@ -119,6 +119,17 @@ onMounted(async () => {
   if (props.preset) {
     try {
       const { preset } = await presetsAPI.get(props.preset.id)
+
+      // Ensure promptTemplates has all required fields (null = use system defaults)
+      const presetTemplates = preset.promptTemplates || {}
+      const promptTemplates = {
+        systemPrompt: presetTemplates.systemPrompt ?? null,
+        continue: presetTemplates.continue ?? null,
+        character: presetTemplates.character ?? null,
+        instruction: presetTemplates.instruction ?? null,
+        rewriteThirdPerson: presetTemplates.rewriteThirdPerson ?? null
+      }
+
       formData.value = {
         ...preset,
         apiConfig: {
@@ -127,7 +138,7 @@ onMounted(async () => {
         },
         generationSettings: preset.generationSettings || formData.value.generationSettings,
         lorebookSettings: preset.lorebookSettings || formData.value.lorebookSettings,
-        promptTemplates: preset.promptTemplates || formData.value.promptTemplates
+        promptTemplates
       }
     } catch (error) {
       console.error('Failed to load preset:', error)
