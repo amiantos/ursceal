@@ -256,8 +256,8 @@ const characterStoriesForModal = computed(() => {
 
 // Get characters from recently modified stories for quick access
 const recentCharacters = computed(() => {
-  // Get the last 5 recently modified stories
-  const recentStories = stories.value.slice(0, 5)
+  // Get the last 15 recently modified stories
+  const recentStories = stories.value.slice(0, 15)
 
   // Extract all character IDs from these stories
   const characterIds = new Set()
@@ -717,7 +717,7 @@ function goToSettings() {
   display: flex;
   flex-direction: column;
   gap: 0.5rem;
-  width: 140px;
+  width: 210px;
 }
 
 .quick-continue-btn {
