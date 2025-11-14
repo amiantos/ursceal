@@ -220,4 +220,53 @@ export class DeepSeekProvider extends LLMProvider {
 
     return super.parseError(error);
   }
+
+  /**
+   * Fetch available models from DeepSeek
+   * @returns {Promise<Array>} Array of model objects with metadata
+   */
+  async getAvailableModels() {
+    try {
+      const response = await fetch(`${this.baseURL}/models`, {
+        method: "GET",
+        headers: {
+          "Authorization": `Bearer ${this.apiKey}`,
+        }
+      });
+
+      if (!response.ok) {
+        throw new Error(`Failed to fetch models: ${response.statusText}`);
+      }
+
+      const data = await response.json();
+
+      // Transform DeepSeek model data
+      return data.data.map(model => ({
+        id: model.id,
+        name: model.id, // DeepSeek doesn't provide separate display names
+        description: this.getModelDescription(model.id),
+        contextLength: 64000, // DeepSeek models support 64k context
+        pricing: {
+          prompt: 0, // Pricing not provided by API
+          completion: 0
+        },
+        created: model.created,
+        ownedBy: model.owned_by
+      }));
+    } catch (error) {
+      console.error('Failed to fetch DeepSeek models:', error);
+      return [];
+    }
+  }
+
+  /**
+   * Get model description based on model ID
+   */
+  getModelDescription(modelId) {
+    const descriptions = {
+      'deepseek-chat': 'DeepSeek-V3 in non-thinking mode, optimized for general conversation and tasks',
+      'deepseek-reasoner': 'DeepSeek-V3 in thinking mode, optimized for advanced reasoning, math, and coding'
+    };
+    return descriptions[modelId] || '';
+  }
 }

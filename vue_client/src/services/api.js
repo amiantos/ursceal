@@ -122,10 +122,17 @@ export const storiesAPI = {
               if (parsed.cancelled) {
                 throw new Error('Generation cancelled')
               }
+              if (parsed.error) {
+                throw new Error(parsed.error)
+              }
               yield parsed
             } catch (e) {
               if (e.message === 'Generation cancelled') throw e
               console.error('Failed to parse SSE data:', e)
+              // Re-throw errors that came from the server
+              if (e.message && !e.message.includes('parse')) {
+                throw e
+              }
             }
           }
         }
@@ -172,10 +179,17 @@ export const storiesAPI = {
               if (parsed.cancelled) {
                 throw new Error('Generation cancelled')
               }
+              if (parsed.error) {
+                throw new Error(parsed.error)
+              }
               yield parsed
             } catch (e) {
               if (e.message === 'Generation cancelled') throw e
               console.error('Failed to parse SSE data:', e)
+              // Re-throw errors that came from the server
+              if (e.message && !e.message.includes('parse')) {
+                throw e
+              }
             }
           }
         }
@@ -221,10 +235,17 @@ export const storiesAPI = {
               if (parsed.cancelled) {
                 throw new Error('Generation cancelled')
               }
+              if (parsed.error) {
+                throw new Error(parsed.error)
+              }
               yield parsed
             } catch (e) {
               if (e.message === 'Generation cancelled') throw e
               console.error('Failed to parse SSE data:', e)
+              // Re-throw errors that came from the server
+              if (e.message && !e.message.includes('parse')) {
+                throw e
+              }
             }
           }
         }
@@ -464,6 +485,21 @@ export const presetsAPI = {
   // OpenRouter specific methods
   getOpenRouterModels(apiKey) {
     return request(`/presets/openrouter/models?apiKey=${encodeURIComponent(apiKey)}`)
+  },
+
+  // OpenAI specific methods
+  getOpenAIModels(apiKey) {
+    return request(`/presets/openai/models?apiKey=${encodeURIComponent(apiKey)}`)
+  },
+
+  // Anthropic specific methods
+  getAnthropicModels(apiKey) {
+    return request(`/presets/anthropic/models?apiKey=${encodeURIComponent(apiKey)}`)
+  },
+
+  // DeepSeek specific methods
+  getDeepSeekModels(apiKey) {
+    return request(`/presets/deepseek/models?apiKey=${encodeURIComponent(apiKey)}`)
   },
 }
 
