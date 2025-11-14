@@ -3,6 +3,27 @@
  * These are created on first run or during migration
  */
 
+/**
+ * Default system prompt template with placeholders for dynamic content insertion
+ * Available placeholders:
+ * - {{characterSection}} - Character profile(s) section
+ * - {{lorebookSection}} - World information/lorebook entries section
+ * - {{personaSection}} - User persona section
+ * - {{instructionsSection}} - Writing instructions section
+ * - {{perspectiveSection}} - Perspective and formatting rules section
+ */
+export const DEFAULT_SYSTEM_PROMPT_TEMPLATE = `You are a creative writing assistant helping to write a novel-style story.
+
+{{characterSection}}{{lorebookSection}}{{personaSection}}{{instructionsSection}}{{perspectiveSection}}`;
+
+/**
+ * Default user prompt templates with placeholders
+ * Available placeholders:
+ * - {{char}} / {{charName}} - Character name
+ * - {{instruction}} - Custom user instruction
+ * - {{storyContent}} - Current story content
+ * - {{user}} - User/persona name
+ */
 export const DEFAULT_PROMPT_TEMPLATES = {
   continue: "Continue the story naturally from where it left off. Write the next 2-3 paragraphs maximum, maintaining the established tone and style, write less if it makes sense stylistically or sets up a good response opportunity for other characters.",
 
@@ -39,7 +60,13 @@ export function getDefaultPresets() {
         recursionDepth: 3,
         enableRecursion: true
       },
-      promptTemplates: { ...DEFAULT_PROMPT_TEMPLATES }
+      promptTemplates: {
+        systemPrompt: null,
+        continue: null,
+        character: null,
+        instruction: null,
+        rewriteThirdPerson: null
+      }
     },
   };
 }
@@ -68,6 +95,12 @@ export function createPresetFromSettings(settings) {
       recursionDepth: settings.lorebookRecursionDepth || 3,
       enableRecursion: settings.lorebookEnableRecursion !== false
     },
-    promptTemplates: { ...DEFAULT_PROMPT_TEMPLATES }
+    promptTemplates: {
+      systemPrompt: null,
+      continue: null,
+      character: null,
+      instruction: null,
+      rewriteThirdPerson: null
+    }
   };
 }
