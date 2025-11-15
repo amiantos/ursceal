@@ -136,6 +136,12 @@ export class ChubImporter {
     // Fetch character metadata from API
     const chubData = await this.fetchCharacter(url);
 
+    // Debug: Log the full API response to see what's available
+    console.log('[CHUB Import] API Response node keys:', Object.keys(chubData.node || {}));
+    console.log('[CHUB Import] Definition data:', chubData.node?.definition ? 'present' : 'not present');
+    console.log('[CHUB Import] Topics:', chubData.node?.topics);
+    console.log('[CHUB Import] Related lorebooks:', chubData.node?.related_lorebooks);
+
     let imageBuffer;
     const fullPath = chubData.node?.full_path || chubData.node?.fullPath;
 
