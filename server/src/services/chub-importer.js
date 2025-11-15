@@ -80,7 +80,7 @@ export class ChubImporter {
         method: 'POST',
         headers: {
           'Content-Type': 'application/json',
-          'Client-Agent': 'Ursceal:2.0:https://github.com/amiantos/ursceal',
+          'Client-Agent': 'Inneal:1.1:https://amiantos.net',
         },
         body: JSON.stringify({
           format: 'tavern',
