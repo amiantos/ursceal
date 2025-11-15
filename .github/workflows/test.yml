@@ -45,19 +45,21 @@ jobs:
         continue-on-error: true
 
       - name: Upload server coverage to Codecov
-        uses: codecov/codecov-action@v4
+        uses: codecov/codecov-action@v5
         with:
           files: ./server/coverage/coverage-final.json
           flags: server
           name: server-coverage
+          token: ${{ secrets.CODECOV_TOKEN }}
         continue-on-error: true
 
       - name: Upload client coverage to Codecov
-        uses: codecov/codecov-action@v4
+        uses: codecov/codecov-action@v5
         with:
           files: ./vue_client/coverage/coverage-final.json
           flags: client
           name: client-coverage
+          token: ${{ secrets.CODECOV_TOKEN }}
         continue-on-error: true
 
       - name: Comment test results on PR
