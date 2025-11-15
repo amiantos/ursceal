@@ -119,7 +119,7 @@ export const PROVIDER_DEFAULTS = {
       maxContextTokens: 8000,
       includeDialogueExamples: false,
       // Anthropic specific settings
-      top_p: 1.0,
+      // Note: Anthropic doesn't allow both temperature and top_p
       top_k: 0
     },
     lorebookSettings: {
