@@ -70,6 +70,39 @@ export class ChubImporter {
   }
 
   /**
+   * Download character card from CHUB API
+   * @param {string} fullPath - Character path (e.g., "author/character-id")
+   * @returns {Promise<Buffer>} Character card PNG data as buffer
+   */
+  static async downloadCharacterCard(fullPath) {
+    try {
+      const response = await fetch('https://api.chub.ai/api/characters/download', {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+          'User-Agent': 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/120.0.0.0 Safari/537.36',
+          'Client-Agent': 'Ursceal:2.0:https://github.com/amiantos/ursceal',
+        },
+        body: JSON.stringify({
+          format: 'tavern',
+          fullPath: fullPath,
+          version: 'main',
+        }),
+      });
+
+      if (!response.ok) {
+        throw new Error(`Failed to download character card: ${response.status} ${response.statusText}`);
+      }
+
+      const arrayBuffer = await response.arrayBuffer();
+      const buffer = Buffer.from(arrayBuffer);
+      return buffer;
+    } catch (error) {
+      throw new Error(`Character card download failed: ${error.message}`);
+    }
+  }
+
+  /**
    * Download character image
    * @param {string} imageUrl - Image URL
    * @returns {Promise<Buffer>} Image data as buffer
@@ -104,35 +137,28 @@ export class ChubImporter {
     // Fetch character metadata from API
     const chubData = await this.fetchCharacter(url);
 
-    // Get the character card PNG URL (has embedded character data including lorebooks)
-    // Note: full_path contains the complete character card export with embedded lorebooks
-    // max_res_url and avatar_url are just display images without embedded data
-    let imageUrl = chubData.node?.full_path ||
-                   chubData.node?.fullPath ||
-                   chubData.node?.max_res_url ||
-                   chubData.node?.avatar_url;
+    let imageBuffer;
 
-    if (!imageUrl) {
-      throw new Error('No character image available');
-    }
+    // Check if we have a fullPath (relative path) - use POST download API
+    const fullPath = chubData.node?.full_path || chubData.node?.fullPath;
 
-    // Log which URL we're using for debugging
-    const urlType = chubData.node?.full_path ? 'full_path' :
-                    chubData.node?.fullPath ? 'fullPath' :
-                    chubData.node?.max_res_url ? 'max_res_url' : 'avatar_url';
-    console.log(`[CHUB Import] Using ${urlType} for character card download: ${imageUrl}`);
-
-    // Convert relative path to full URL if needed
-    if (!imageUrl.startsWith('http://') && !imageUrl.startsWith('https://')) {
+    if (fullPath && !fullPath.startsWith('http://') && !fullPath.startsWith('https://')) {
       // fullPath is a relative path like "author/character-id"
-      // Use the CHUB download API endpoint to get the full character card PNG
-      const characterPath = this.extractCharacterPath(url);
-      imageUrl = `https://api.chub.ai/api/characters/${characterPath}/download`;
-      console.log(`[CHUB Import] Converted to download URL: ${imageUrl}`);
-    }
+      // Use the CHUB download API endpoint to get the full character card PNG with embedded data
+      console.log(`[CHUB Import] Using fullPath for download: ${fullPath}`);
+      imageBuffer = await this.downloadCharacterCard(fullPath);
+    } else {
+      // Fall back to downloading from a direct URL
+      const imageUrl = fullPath || chubData.node?.max_res_url || chubData.node?.avatar_url;
 
-    // Download the PNG file which contains embedded character data
-    const imageBuffer = await this.downloadImage(imageUrl);
+      if (!imageUrl) {
+        throw new Error('No character image available');
+      }
+
+      const urlType = chubData.node?.max_res_url ? 'max_res_url' : 'avatar_url';
+      console.log(`[CHUB Import] Using ${urlType} for character card download: ${imageUrl}`);
+      imageBuffer = await this.downloadImage(imageUrl);
+    }
 
     // Parse character data from the PNG using CharacterParser
     const characterData = await CharacterParser.parseCard(imageBuffer);
