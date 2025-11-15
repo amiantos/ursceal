@@ -107,10 +107,10 @@ export class ChubImporter {
     // Get the character card PNG URL (has embedded character data including lorebooks)
     // Note: full_path contains the complete character card export with embedded lorebooks
     // max_res_url and avatar_url are just display images without embedded data
-    const imageUrl = chubData.node?.full_path ||
-                     chubData.node?.fullPath ||
-                     chubData.node?.max_res_url ||
-                     chubData.node?.avatar_url;
+    let imageUrl = chubData.node?.full_path ||
+                   chubData.node?.fullPath ||
+                   chubData.node?.max_res_url ||
+                   chubData.node?.avatar_url;
 
     if (!imageUrl) {
       throw new Error('No character image available');
@@ -120,7 +120,16 @@ export class ChubImporter {
     const urlType = chubData.node?.full_path ? 'full_path' :
                     chubData.node?.fullPath ? 'fullPath' :
                     chubData.node?.max_res_url ? 'max_res_url' : 'avatar_url';
-    console.log(`[CHUB Import] Using ${urlType} for character card download`);
+    console.log(`[CHUB Import] Using ${urlType} for character card download: ${imageUrl}`);
+
+    // Convert relative path to full URL if needed
+    if (!imageUrl.startsWith('http://') && !imageUrl.startsWith('https://')) {
+      // fullPath is a relative path like "author/character-id"
+      // Use the CHUB download API endpoint to get the full character card PNG
+      const characterPath = this.extractCharacterPath(url);
+      imageUrl = `https://api.chub.ai/api/characters/${characterPath}/download`;
+      console.log(`[CHUB Import] Converted to download URL: ${imageUrl}`);
+    }
 
     // Download the PNG file which contains embedded character data
     const imageBuffer = await this.downloadImage(imageUrl);
