@@ -97,8 +97,8 @@ export const PROVIDERS = {
 
   openai: {
     // Display information
-    name: 'OpenAI GPT-4',
-    description: 'OpenAI GPT-4 models',
+    name: 'OpenAI',
+    description: 'OpenAI API models',
     icon: 'fa-robot',
     // Capabilities
     supportsReasoning: false,
@@ -140,7 +140,7 @@ export const PROVIDERS = {
 
   anthropic: {
     // Display information
-    name: 'Claude',
+    name: 'Anthropic',
     description: 'Anthropic Claude models',
     icon: 'fa-comment',
     // Capabilities
