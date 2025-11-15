@@ -2,6 +2,8 @@
 
 AI-powered short story writing application that supports Tavern character cards and SillyTavern lorebooks.
 
+[![codecov](https://codecov.io/github/amiantos/ursceal/graph/badge.svg?token=QRDTDEUZ6X)](https://codecov.io/github/amiantos/ursceal)
+
 ## Features
 
 - **Interactive Story Writing** - Pick one or multiple characters, optionally assign a character as your persona, and go on an adventure with them
