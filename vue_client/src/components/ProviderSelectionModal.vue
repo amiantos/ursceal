@@ -51,11 +51,11 @@
 <script setup>
 import { ref } from 'vue'
 import Modal from './Modal.vue'
-import { PROVIDER_INFO } from '../config/providerDefaults'
+import { PROVIDERS } from '../config/providerDefaults'
 
 const emit = defineEmits(['close', 'select'])
 
-const providers = PROVIDER_INFO
+const providers = PROVIDERS
 const selectedProvider = ref(null)
 
 function selectProvider(provider) {

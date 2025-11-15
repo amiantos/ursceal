@@ -179,43 +179,15 @@ const canSave = computed(() => {
   return formData.value.name.trim() && hasValidApiKey
 })
 
-function getDefaultBaseURL() {
-  const urls = {
-    deepseek: 'https://api.deepseek.com/v1',
-    aihorde: 'https://aihorde.net/api/v2',
-    openai: 'https://api.openai.com/v1',
-    anthropic: 'https://api.anthropic.com/v1',
-    openrouter: 'https://openrouter.ai/api/v1'
-  }
-  return urls[formData.value.provider] || ''
-}
-
-function getDefaultModel() {
-  const models = {
-    deepseek: 'deepseek-reasoner',
-    aihorde: 'Mythomax 13B',
-    openai: 'gpt-4-turbo-preview',
-    anthropic: 'claude-3-5-sonnet-20241022',
-    openrouter: 'anthropic/claude-3.5-sonnet'
-  }
-  return models[formData.value.provider] || ''
-}
-
 async function savePreset() {
   if (!canSave.value) return
 
   try {
     saving.value = true
 
-    // Prepare data
+    // Prepare data - provider defaults already include baseURL and model
     const presetData = {
-      ...formData.value,
-      // Use defaults if fields are empty
-      apiConfig: {
-        ...formData.value.apiConfig,
-        baseURL: formData.value.apiConfig.baseURL || getDefaultBaseURL(),
-        model: formData.value.apiConfig.model || getDefaultModel()
-      }
+      ...formData.value
     }
 
     if (props.preset) {
