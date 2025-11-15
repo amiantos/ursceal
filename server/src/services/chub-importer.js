@@ -137,25 +137,30 @@ export class ChubImporter {
     const chubData = await this.fetchCharacter(url);
 
     let imageBuffer;
-
-    // Check if we have a fullPath (relative path) - use POST download API
     const fullPath = chubData.node?.full_path || chubData.node?.fullPath;
 
-    if (fullPath && !fullPath.startsWith('http://') && !fullPath.startsWith('https://')) {
-      // fullPath is a relative path like "author/character-id"
-      // Use the CHUB download API endpoint to get the full character card PNG with embedded data
-      console.log(`[CHUB Import] Using fullPath for download: ${fullPath}`);
-      imageBuffer = await this.downloadCharacterCard(fullPath);
-    } else {
-      // Fall back to downloading from a direct URL
-      const imageUrl = fullPath || chubData.node?.max_res_url || chubData.node?.avatar_url;
+    if (!fullPath) {
+      throw new Error('No character path available');
+    }
+
+    // Try to get the character card PNG from charhub.io first
+    // This URL contains the full character card with embedded data including lorebooks
+    const charCardUrl = `https://avatars.charhub.io/avatars/${fullPath}/chara_card_v2.png`;
+    console.log(`[CHUB Import] Attempting to download from: ${charCardUrl}`);
+
+    try {
+      imageBuffer = await this.downloadImage(charCardUrl);
+      console.log('[CHUB Import] Successfully downloaded character card from charhub.io');
+    } catch (error) {
+      // If that fails (404), fall back to max_res_url from API response
+      console.log('[CHUB Import] charhub.io download failed, falling back to max_res_url');
+      const imageUrl = chubData.node?.max_res_url || chubData.node?.avatar_url;
 
       if (!imageUrl) {
         throw new Error('No character image available');
       }
 
-      const urlType = chubData.node?.max_res_url ? 'max_res_url' : 'avatar_url';
-      console.log(`[CHUB Import] Using ${urlType} for character card download: ${imageUrl}`);
+      console.log(`[CHUB Import] Using fallback URL: ${imageUrl}`);
       imageBuffer = await this.downloadImage(imageUrl);
     }
 
