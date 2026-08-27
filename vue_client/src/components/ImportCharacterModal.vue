@@ -131,6 +131,19 @@ function handleFileSelect(event) {
   }
 }
 
+/**
+ * A card already in the library is not a failure — say so plainly instead of
+ * wrapping "already imported" in "Failed to import character:".
+ */
+function reportImportError(error) {
+  console.error('Failed to import character:', error);
+  if (error.existingCharacterId) {
+    toast.info(error.message);
+    return;
+  }
+  toast.error('Failed to import character: ' + error.message);
+}
+
 async function importFromURL() {
   if (!characterUrl.value.trim() || importing.value) return;
 
@@ -145,8 +158,7 @@ async function importFromURL() {
     emit('imported', result);
     emit('close');
   } catch (error) {
-    console.error('Failed to import from URL:', error);
-    toast.error('Failed to import character: ' + error.message);
+    reportImportError(error);
   } finally {
     resetImportState();
   }
@@ -172,8 +184,7 @@ async function importFromFile() {
     emit('imported', result);
     emit('close');
   } catch (error) {
-    console.error('Failed to import character from file:', error);
-    toast.error('Failed to import character: ' + error.message);
+    reportImportError(error);
   } finally {
     resetImportState();
   }

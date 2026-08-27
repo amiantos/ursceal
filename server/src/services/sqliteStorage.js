@@ -4,6 +4,7 @@
  */
 
 import { initializeDatabase, calculateWordCount } from './database.js';
+import { computeCharacterChecksum, computeLorebookChecksum } from './checksum-service.js';
 import { v4 as uuidv4 } from 'uuid';
 import sharp from 'sharp';
 
@@ -84,8 +85,10 @@ export class SqliteStorageService {
         UPDATE characters SET thumbnail = @thumbnail, thumbnail_medium = @thumbnailMedium WHERE id = @id
       `),
       insertCharacter: this.db.prepare(`
-        INSERT INTO characters (id, name, data, image, thumbnail, thumbnail_medium, created, modified)
-        VALUES (@id, @name, @data, @image, @thumbnail, @thumbnailMedium, @created, @modified)
+        INSERT INTO characters (id, name, data, image, thumbnail, thumbnail_medium, created, modified,
+                                import_origin_checksum, import_internal_checksum, current_checksum)
+        VALUES (@id, @name, @data, @image, @thumbnail, @thumbnailMedium, @created, @modified,
+                @importOriginChecksum, @importInternalChecksum, @currentChecksum)
       `),
       updateCharacter: this.db.prepare(`
         UPDATE characters SET name = @name, data = @data, modified = @modified WHERE id = @id
@@ -93,6 +96,16 @@ export class SqliteStorageService {
       updateCharacterWithImage: this.db.prepare(`
         UPDATE characters SET name = @name, data = @data, image = @image, thumbnail = @thumbnail, thumbnail_medium = @thumbnailMedium, modified = @modified WHERE id = @id
       `),
+      updateCharacterCurrentChecksum: this.db.prepare(
+        'UPDATE characters SET current_checksum = ? WHERE id = ?',
+      ),
+      findCharactersByOriginChecksum: this.db.prepare(
+        `SELECT id, name, current_checksum, import_internal_checksum
+         FROM characters WHERE import_origin_checksum = ?`,
+      ),
+      charactersMissingChecksum: this.db.prepare(
+        'SELECT id FROM characters WHERE current_checksum IS NULL',
+      ),
       deleteCharacter: this.db.prepare('DELETE FROM characters WHERE id = ?'),
       characterExists: this.db.prepare('SELECT 1 FROM characters WHERE id = ?'),
 
@@ -132,8 +145,12 @@ export class SqliteStorageService {
         'SELECT * FROM lorebook_entries WHERE lorebook_id = ? ORDER BY display_index',
       ),
       insertLorebook: this.db.prepare(`
-        INSERT INTO lorebooks (id, name, description, scan_depth, token_budget, recursive_scanning, extensions, created, modified)
-        VALUES (@id, @name, @description, @scanDepth, @tokenBudget, @recursiveScanning, @extensions, @created, @modified)
+        INSERT INTO lorebooks (id, name, description, scan_depth, token_budget, recursive_scanning,
+                               extensions, created, modified,
+                               import_origin_checksum, import_internal_checksum, current_checksum)
+        VALUES (@id, @name, @description, @scanDepth, @tokenBudget, @recursiveScanning,
+                @extensions, @created, @modified,
+                @importOriginChecksum, @importInternalChecksum, @currentChecksum)
       `),
       updateLorebook: this.db.prepare(`
         UPDATE lorebooks SET name = @name, description = @description, scan_depth = @scanDepth,
@@ -141,6 +158,29 @@ export class SqliteStorageService {
                             extensions = @extensions, modified = @modified
         WHERE id = @id
       `),
+      updateLorebookCurrentChecksum: this.db.prepare(
+        'UPDATE lorebooks SET current_checksum = ? WHERE id = ?',
+      ),
+      findLorebooksByOriginChecksum: this.db.prepare(
+        `SELECT id, name, current_checksum, import_internal_checksum
+         FROM lorebooks WHERE import_origin_checksum = ?`,
+      ),
+      findLorebooksByCurrentChecksum: this.db.prepare(
+        'SELECT id, name FROM lorebooks WHERE current_checksum = ? ORDER BY created',
+      ),
+      lorebookNameExists: this.db.prepare('SELECT 1 FROM lorebooks WHERE name = ?'),
+      lorebooksMissingChecksum: this.db.prepare(
+        'SELECT id FROM lorebooks WHERE current_checksum IS NULL',
+      ),
+      charactersReferencingLorebook: this.db.prepare(
+        `SELECT id, name FROM characters
+         WHERE json_extract(data, '$.data.extensions.ursceal_lorebook_id') = ? AND id != ?`,
+      ),
+      storiesReferencingLorebook: this.db.prepare(
+        `SELECT s.id, s.title FROM story_lorebooks sl
+         JOIN stories s ON s.id = sl.story_id
+         WHERE sl.lorebook_id = ?`,
+      ),
       deleteLorebook: this.db.prepare('DELETE FROM lorebooks WHERE id = ?'),
       lorebookExists: this.db.prepare('SELECT 1 FROM lorebooks WHERE id = ?'),
 
@@ -617,7 +657,22 @@ export class SqliteStorageService {
     return data;
   }
 
-  async saveCharacter(characterId, characterData, imageBuffer = null) {
+  /**
+   * Save a character, deriving `current_checksum` from the data being written.
+   *
+   * Checksum bookkeeping lives here rather than in the routes so it can't drift
+   * from what is actually stored: every write recomputes `current_checksum`, and
+   * the import baselines are written once at insert and never touched again.
+   *
+   * @param {string} characterId
+   * @param {Object} characterData - Full V2 card.
+   * @param {Buffer|null} imageBuffer
+   * @param {Object} [options]
+   * @param {string|null} [options.originChecksum] - Checksum of the source content
+   *   before local image URLs were rewritten. Only meaningful on import; ignored
+   *   when updating an existing character.
+   */
+  async saveCharacter(characterId, characterData, imageBuffer = null, options = {}) {
     const existing = this.stmts.characterExists.get(characterId);
     const now = new Date().toISOString();
 
@@ -628,6 +683,7 @@ export class SqliteStorageService {
 
     const name = characterData.data?.name || 'Untitled';
     const dataJson = JSON.stringify(characterData);
+    const currentChecksum = computeCharacterChecksum(characterData);
 
     if (existing) {
       // Update existing character
@@ -653,6 +709,10 @@ export class SqliteStorageService {
           modified: now,
         });
       }
+      // `import_origin_checksum` and `import_internal_checksum` are import-time
+      // baselines: leaving them alone is what makes "edited since import"
+      // (current !== internal) mean anything.
+      this.stmts.updateCharacterCurrentChecksum.run(currentChecksum, characterId);
     } else {
       // Insert new character
       let thumbnail = null;
@@ -673,6 +733,9 @@ export class SqliteStorageService {
         thumbnailMedium,
         created: now,
         modified: now,
+        importOriginChecksum: options.originChecksum ?? null,
+        importInternalChecksum: currentChecksum,
+        currentChecksum,
       });
     }
 
@@ -861,9 +924,21 @@ export class SqliteStorageService {
     };
   }
 
-  async saveLorebook(lorebookId, lorebookData) {
+  /**
+   * Save a lorebook, deriving `current_checksum` from the data being written.
+   * Same ownership rule as saveCharacter: storage computes the current checksum,
+   * the import baselines are written once at insert.
+   *
+   * @param {string} lorebookId
+   * @param {Object} lorebookData
+   * @param {Object} [options]
+   * @param {string|null} [options.originChecksum] - Checksum of the source content
+   *   before local image URLs were rewritten. Ignored when updating.
+   */
+  async saveLorebook(lorebookId, lorebookData, options = {}) {
     const existing = this.stmts.lorebookExists.get(lorebookId);
     const now = new Date().toISOString();
+    const currentChecksum = computeLorebookChecksum(lorebookData);
 
     const transaction = this.db.transaction(() => {
       if (existing) {
@@ -879,6 +954,8 @@ export class SqliteStorageService {
           modified: now,
         });
 
+        this.stmts.updateLorebookCurrentChecksum.run(currentChecksum, lorebookId);
+
         // Delete existing entries and re-insert
         this.stmts.deleteLorebookEntries.run(lorebookId);
       } else {
@@ -893,6 +970,9 @@ export class SqliteStorageService {
           extensions: JSON.stringify(lorebookData.extensions || {}),
           created: now,
           modified: now,
+          importOriginChecksum: options.originChecksum ?? null,
+          importInternalChecksum: currentChecksum,
+          currentChecksum,
         });
       }
 
@@ -930,6 +1010,134 @@ export class SqliteStorageService {
 
     transaction();
     return { id: lorebookId };
+  }
+
+  // ==================== Checksums & Duplicate Detection ====================
+
+  /**
+   * Characters imported from source content with this checksum.
+   * @returns {Array<{id: string, name: string, current_checksum: string, import_internal_checksum: string}>}
+   */
+  findCharactersByOriginChecksum(checksum) {
+    return this.stmts.findCharactersByOriginChecksum.all(checksum);
+  }
+
+  /** Lorebooks imported from source content with this checksum. */
+  findLorebooksByOriginChecksum(checksum) {
+    return this.stmts.findLorebooksByOriginChecksum.all(checksum);
+  }
+
+  /**
+   * Oldest lorebook whose current content matches this checksum, if any.
+   * @returns {{id: string, name: string}|null}
+   */
+  findLorebookByContentChecksum(checksum) {
+    return this.stmts.findLorebooksByCurrentChecksum.all(checksum)[0] ?? null;
+  }
+
+  /**
+   * A lorebook we already hold that is the same book as an incoming import.
+   *
+   * `contentChecksum` is taken from the source before image caching rewrites any
+   * URLs, so it is matched against `import_origin_checksum` first — that column
+   * holds the same pre-rewrite value, which is what lets two characters carrying
+   * the same illustrated world book agree. An edited copy does not count: the
+   * user should be able to import a clean one alongside it.
+   *
+   * Falling back to stored content catches lorebooks with no origin checksum —
+   * anything predating schema v9, plus books with no external images, where the
+   * two checksums are identical anyway.
+   *
+   * @returns {{id: string, name: string}|null}
+   */
+  findExistingLorebookForImport(contentChecksum) {
+    const fromSameSource = this.findLorebooksByOriginChecksum(contentChecksum).find(
+      (match) => match.current_checksum === match.import_internal_checksum,
+    );
+
+    return fromSameSource ?? this.findLorebookByContentChecksum(contentChecksum);
+  }
+
+  /**
+   * Everything still pointing at a lorebook. Both halves matter before offering
+   * to delete one: characters link a lorebook through
+   * `extensions.ursceal_lorebook_id`, but stories attach lorebooks directly in
+   * `story_lorebooks` (and stories.js auto-attaches a character's lorebook when
+   * the character joins a story), so a lorebook with no characters left can
+   * still be in active use.
+   *
+   * @param {string} lorebookId
+   * @param {string} [excludeCharacterId] - Character being deleted, ignored in the count.
+   * @returns {{characters: Array, stories: Array}}
+   */
+  getLorebookReferences(lorebookId, excludeCharacterId = '') {
+    return {
+      characters: this.stmts.charactersReferencingLorebook.all(lorebookId, excludeCharacterId),
+      stories: this.stmts.storiesReferencingLorebook.all(lorebookId),
+    };
+  }
+
+  /**
+   * Append `(2)`, `(3)`, ... until the lorebook name is free.
+   *
+   * Only lorebooks get this treatment. A character's name is its `{{char}}`
+   * macro and goes straight into the prompt, so renaming an imported card would
+   * change what the model writes; lorebook names are library labels only.
+   */
+  resolveUniqueLorebookName(baseName) {
+    const name = baseName || 'Untitled Lorebook';
+    if (!this.stmts.lorebookNameExists.get(name)) return name;
+
+    for (let suffix = 2; ; suffix++) {
+      const candidate = `${name} (${suffix})`;
+      if (!this.stmts.lorebookNameExists.get(candidate)) return candidate;
+    }
+  }
+
+  /**
+   * Fill in `current_checksum` for rows that predate schema v9.
+   *
+   * Deliberately recomputes from the stored entity rather than from anything
+   * import-time, so backfilled checksums are identical to what a fresh import of
+   * the same content produces — otherwise existing installs, the ones that
+   * actually have duplicate lorebooks, would never match on import.
+   *
+   * `import_origin_checksum` stays NULL: we no longer have the pre-rewrite
+   * source, and guessing would create false duplicate matches.
+   *
+   * @returns {{characters: number, lorebooks: number}}
+   */
+  async backfillChecksums() {
+    let characters = 0;
+    let lorebooks = 0;
+
+    for (const { id } of this.stmts.charactersMissingChecksum.all()) {
+      try {
+        const row = this.stmts.getCharacter.get(id);
+        this.stmts.updateCharacterCurrentChecksum.run(
+          computeCharacterChecksum(JSON.parse(row.data)),
+          id,
+        );
+        characters++;
+      } catch (error) {
+        console.error(`Failed to backfill checksum for character ${id}:`, error.message);
+      }
+    }
+
+    for (const { id } of this.stmts.lorebooksMissingChecksum.all()) {
+      try {
+        const lorebook = await this.getLorebook(id);
+        this.stmts.updateLorebookCurrentChecksum.run(computeLorebookChecksum(lorebook), id);
+        lorebooks++;
+      } catch (error) {
+        console.error(`Failed to backfill checksum for lorebook ${id}:`, error.message);
+      }
+    }
+
+    if (characters || lorebooks) {
+      console.log(`Backfilled checksums: ${characters} character(s), ${lorebooks} lorebook(s)`);
+    }
+    return { characters, lorebooks };
   }
 
   async deleteLorebook(lorebookId) {

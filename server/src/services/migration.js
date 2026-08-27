@@ -421,5 +421,12 @@ export async function runMigration(dataRoot) {
     console.error('Thumbnail backfill error:', error);
   }
 
+  // Backfill checksums for entities that predate schema v9 (no-op when up to date)
+  try {
+    await storage.backfillChecksums();
+  } catch (error) {
+    console.error('Checksum backfill error:', error);
+  }
+
   return migrationResult;
 }

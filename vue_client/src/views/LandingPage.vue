@@ -217,6 +217,7 @@ import { storiesAPI, charactersAPI, lorebooksAPI, presetsAPI } from '../services
 import { useToast } from '../composables/useToast';
 import { useConfirm } from '../composables/useConfirm';
 import { useDataCache } from '../composables/useDataCache';
+import { useOrphanedLorebook } from '../composables/useOrphanedLorebook';
 import Tabs from '../components/Tabs.vue';
 import StoriesTable from '../components/StoriesTable.vue';
 import CharactersTable from '../components/CharactersTable.vue';
@@ -234,6 +235,7 @@ import ProviderSelectionModal from '../components/ProviderSelectionModal.vue';
 const router = useRouter();
 const toast = useToast();
 const { confirm } = useConfirm();
+const { offerToDeleteOrphanedLorebook } = useOrphanedLorebook();
 
 // Use centralized data cache for better performance
 const {
@@ -432,9 +434,10 @@ async function deleteCharacter(character) {
   if (!confirmed) return;
 
   try {
-    await charactersAPI.delete(character.id);
+    const { orphanedLorebook } = await charactersAPI.delete(character.id);
     removeCharacterLocally(character.id);
     toast.success('Character deleted successfully');
+    await offerToDeleteOrphanedLorebook(orphanedLorebook);
   } catch (error) {
     console.error('Error deleting character:', error);
     toast.error('Failed to delete character: ' + error.message);

@@ -3,9 +3,17 @@
  */
 
 export class AppError extends Error {
-  constructor(message, statusCode = 500) {
+  /**
+   * @param {string} message
+   * @param {number} [statusCode]
+   * @param {Object|null} [details] - Extra fields merged into the JSON error body,
+   *   for cases where the client needs more than a message (e.g. a duplicate
+   *   import returning the id of the character it collided with).
+   */
+  constructor(message, statusCode = 500, details = null) {
     super(message);
     this.statusCode = statusCode;
+    this.details = details;
     this.name = 'AppError';
     Error.captureStackTrace(this, this.constructor);
   }
@@ -32,6 +40,7 @@ export function errorHandler(err, req, res, _next) {
 
   res.status(statusCode).json({
     error: message,
+    ...(err.details && typeof err.details === 'object' ? err.details : {}),
     ...(process.env.NODE_ENV === 'development' && { stack: err.stack }),
   });
 }

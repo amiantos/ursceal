@@ -423,6 +423,7 @@ import { charactersAPI, lorebooksAPI, storiesAPI, settingsAPI } from '../service
 import { useToast } from '../composables/useToast';
 import { useNavigation } from '../composables/useNavigation';
 import { useConfirm } from '../composables/useConfirm';
+import { useOrphanedLorebook } from '../composables/useOrphanedLorebook';
 import { setPageTitle } from '../router';
 import CharacterCard from '../components/CharacterCard.vue';
 import GreetingSelectorModal from '../components/GreetingSelectorModal.vue';
@@ -438,6 +439,7 @@ const router = useRouter();
 const toast = useToast();
 const { goBack } = useNavigation();
 const { confirm } = useConfirm();
+const { offerToDeleteOrphanedLorebook } = useOrphanedLorebook();
 
 // State
 const loading = ref(true);
@@ -761,8 +763,9 @@ async function deleteCharacter() {
   if (!confirmed) return;
 
   try {
-    await charactersAPI.delete(props.characterId);
+    const { orphanedLorebook } = await charactersAPI.delete(props.characterId);
     toast.success('Character deleted successfully');
+    await offerToDeleteOrphanedLorebook(orphanedLorebook);
     router.push('/');
   } catch (error) {
     console.error('Failed to delete character:', error);
