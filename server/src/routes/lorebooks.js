@@ -71,47 +71,35 @@ router.get(
   asyncHandler(async (req, res) => {
     const lorebooks = await storage.listAllLorebooks();
 
-    // Get all characters to find which ones are associated with each lorebook
-    const allCharacters = await storage.listAllCharacters();
+    // Group characters by the lorebook they link to in one pass. Asking each
+    // lorebook which characters point at it instead reads and parses every
+    // character card once per lorebook.
+    const charactersByLorebook = new Map();
+    for (const char of storage.listCharacterSummaries()) {
+      if (!char.lorebookId) continue;
 
-    // Enrich lorebooks with associated character data
-    const enrichedLorebooks = await Promise.all(
-      lorebooks.map(async (lorebook) => {
-        // Find characters that reference this lorebook
-        const associatedCharacters = [];
+      const imageUrl = char.hasImage ? `/api/characters/${char.id}/image` : null;
+      const entry = {
+        id: char.id,
+        name: char.name,
+        imageUrl,
+        thumbnailUrl: char.hasThumbnail ? `/api/characters/${char.id}/thumbnail` : imageUrl,
+      };
 
-        for (const char of allCharacters) {
-          try {
-            const characterData = await storage.getCharacter(char.id);
-            const lorebookId = characterData.data?.extensions?.ursceal_lorebook_id;
+      const existing = charactersByLorebook.get(char.lorebookId);
+      if (existing) {
+        existing.push(entry);
+      } else {
+        charactersByLorebook.set(char.lorebookId, [entry]);
+      }
+    }
 
-            if (lorebookId === lorebook.id) {
-              // Get character info
-              const hasImage = await storage.hasCharacterImage(char.id);
-              const hasThumbnail = await storage.hasCharacterThumbnail(char.id);
-              const imageUrl = hasImage ? `/api/characters/${char.id}/image` : null;
-              const thumbnailUrl = hasThumbnail ? `/api/characters/${char.id}/thumbnail` : imageUrl;
-
-              associatedCharacters.push({
-                id: char.id,
-                name: characterData.data?.name || 'Unknown',
-                imageUrl,
-                thumbnailUrl,
-              });
-            }
-          } catch (error) {
-            console.error(`Failed to check character ${char.id} for lorebook association:`, error);
-          }
-        }
-
-        return {
-          ...lorebook,
-          characters: associatedCharacters,
-        };
-      }),
-    );
-
-    res.json({ lorebooks: enrichedLorebooks });
+    res.json({
+      lorebooks: lorebooks.map((lorebook) => ({
+        ...lorebook,
+        characters: charactersByLorebook.get(lorebook.id) ?? [],
+      })),
+    });
   }),
 );
 

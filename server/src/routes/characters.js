@@ -240,64 +240,55 @@ async function findLorebookLeftBehindBy(characterId) {
 router.get(
   '/',
   asyncHandler(async (req, res) => {
-    const characters = await storage.listAllCharacters();
+    // Total words per character, accumulated in one pass over the stories.
+    // Filtering the whole story list once per character is quadratic, and this
+    // list is fetched on every landing-page load.
+    const wordsByCharacter = new Map();
+    for (const story of await storage.listStories()) {
+      const participants = new Set(story.characterIds ?? []);
+      if (story.personaCharacterId) participants.add(story.personaCharacterId);
 
-    // Load all stories once for calculating total words per character
-    const allStories = await storage.listStories();
+      for (const characterId of participants) {
+        wordsByCharacter.set(
+          characterId,
+          (wordsByCharacter.get(characterId) ?? 0) + (story.wordCount || 0),
+        );
+      }
+    }
 
-    // Load character data from JSON files
-    const charactersWithData = await Promise.all(
-      characters.map(async (char) => {
-        try {
-          const cardData = await storage.getCharacter(char.id);
-          const hasImage = await storage.hasCharacterImage(char.id);
+    // `description` is deliberately absent: it is the bulk of this payload
+    // (megabytes across a large library) and nothing renders it from the list.
+    // CharacterDetail fetches the full card from GET /:characterId/data instead.
+    const charactersWithData = storage.listCharacterSummaries().map((char) => {
+      if (char.failed) {
+        return {
+          id: char.id,
+          name: 'Unknown',
+          tags: [],
+          imageUrl: null,
+          thumbnailUrl: null,
+          thumbnailMediumUrl: null,
+          created: null,
+          totalWords: 0,
+        };
+      }
 
-          // Calculate total words from all stories this character appears in
-          const characterStories = allStories.filter(
-            (story) =>
-              story.characterIds?.includes(char.id) || story.personaCharacterId === char.id,
-          );
-          const totalWords = characterStories.reduce(
-            (sum, story) => sum + (story.wordCount || 0),
-            0,
-          );
+      // Full image, small thumbnail, and medium thumbnail URLs
+      const imageUrl = char.hasImage ? `/api/characters/${char.id}/image` : null;
 
-          // Provide full image, small thumbnail, and medium thumbnail URLs
-          const hasThumbnail = await storage.hasCharacterThumbnail(char.id);
-          const hasThumbnailMedium = await storage.hasCharacterThumbnailMedium(char.id);
-          const imageUrl = hasImage ? `/api/characters/${char.id}/image` : null;
-          const thumbnailUrl = hasThumbnail ? `/api/characters/${char.id}/thumbnail` : imageUrl;
-          const thumbnailMediumUrl = hasThumbnailMedium
-            ? `/api/characters/${char.id}/thumbnail-medium`
-            : imageUrl;
-
-          return {
-            id: char.id,
-            name: cardData.data?.name || 'Unknown',
-            description: cardData.data?.description || '',
-            tags: cardData.data?.tags || cardData.tags || [],
-            imageUrl, // Full resolution
-            thumbnailUrl, // 96x96 — table rows / recent bar
-            thumbnailMediumUrl, // 256x384 — picker cards / floating avatar
-            created: cardData.metadata?.created || null,
-            totalWords,
-          };
-        } catch (error) {
-          console.error(`Failed to load character ${char.id}:`, error);
-          return {
-            id: char.id,
-            name: 'Unknown',
-            description: 'Failed to load character data',
-            tags: [],
-            imageUrl: null,
-            thumbnailUrl: null,
-            thumbnailMediumUrl: null,
-            created: null,
-            totalWords: 0,
-          };
-        }
-      }),
-    );
+      return {
+        id: char.id,
+        name: char.name,
+        tags: char.tags,
+        imageUrl, // Full resolution
+        thumbnailUrl: char.hasThumbnail ? `/api/characters/${char.id}/thumbnail` : imageUrl,
+        thumbnailMediumUrl: char.hasThumbnailMedium
+          ? `/api/characters/${char.id}/thumbnail-medium`
+          : imageUrl,
+        created: char.created,
+        totalWords: wordsByCharacter.get(char.id) ?? 0,
+      };
+    });
 
     // Sort characters alphabetically by name (case-insensitive)
     charactersWithData.sort((a, b) => {
