@@ -106,6 +106,14 @@ export class SqliteStorageService {
       charactersMissingChecksum: this.db.prepare(
         'SELECT id FROM characters WHERE current_checksum IS NULL',
       ),
+      listCharacterSummaries: this.db.prepare(`
+        SELECT id, name, data, created,
+               image IS NOT NULL AS has_image,
+               thumbnail IS NOT NULL AS has_thumbnail,
+               thumbnail_medium IS NOT NULL AS has_thumbnail_medium
+        FROM characters
+        ORDER BY name
+      `),
       deleteCharacter: this.db.prepare('DELETE FROM characters WHERE id = ?'),
       characterExists: this.db.prepare('SELECT 1 FROM characters WHERE id = ?'),
 
@@ -624,6 +632,46 @@ export class SqliteStorageService {
   }
 
   // ==================== Character Operations ====================
+
+  /**
+   * Every character with the fields list views need, in one query.
+   *
+   * The image columns are tested with `IS NOT NULL` rather than fetched and
+   * null-checked, so a list of characters never pulls full-resolution card PNGs
+   * into memory just to decide whether a URL exists.
+   *
+   * @returns {Array<Object>} One summary per character, sorted by stored name.
+   */
+  listCharacterSummaries() {
+    return this.stmts.listCharacterSummaries.all().map((row) => {
+      const summary = {
+        id: row.id,
+        name: row.name || 'Unknown',
+        description: '',
+        tags: [],
+        lorebookId: null,
+        created: row.created,
+        hasImage: !!row.has_image,
+        hasThumbnail: !!row.has_thumbnail,
+        hasThumbnailMedium: !!row.has_thumbnail_medium,
+        failed: false,
+      };
+
+      try {
+        const card = JSON.parse(row.data);
+        summary.name = card.data?.name || summary.name;
+        summary.description = card.data?.description || '';
+        summary.tags = card.data?.tags || card.tags || [];
+        summary.lorebookId = card.data?.extensions?.ursceal_lorebook_id || null;
+        summary.created = card.metadata?.created || row.created;
+      } catch (error) {
+        console.error(`Failed to parse character ${row.id}:`, error.message);
+        summary.failed = true;
+      }
+
+      return summary;
+    });
+  }
 
   async listAllCharacters() {
     const rows = this.stmts.listCharacters.all();
