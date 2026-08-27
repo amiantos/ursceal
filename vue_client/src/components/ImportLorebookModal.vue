@@ -123,11 +123,23 @@ async function importFromJSON() {
     emit('imported', result);
     emit('close');
   } catch (error) {
-    console.error('Failed to import lorebook:', error);
-    toast.error('Failed to import lorebook: ' + error.message);
+    reportImportError(error);
   } finally {
     resetImportState();
   }
+}
+
+/**
+ * A lorebook already in the library is not a failure — say so plainly instead
+ * of wrapping "already imported" in "Failed to import lorebook:".
+ */
+function reportImportError(error) {
+  console.error('Failed to import lorebook:', error);
+  if (error.existingLorebookId) {
+    toast.info(error.message);
+    return;
+  }
+  toast.error('Failed to import lorebook: ' + error.message);
 }
 
 async function importFromURL() {
@@ -141,8 +153,7 @@ async function importFromURL() {
     emit('imported', result);
     emit('close');
   } catch (error) {
-    console.error('Failed to import from URL:', error);
-    toast.error('Failed to import lorebook: ' + error.message);
+    reportImportError(error);
   } finally {
     resetImportState();
   }

@@ -10,6 +10,7 @@ import { SqliteStorageService } from '../services/sqliteStorage.js';
 import { CharacterParser } from '../services/character-parser.js';
 import { LorebookParser } from '../services/lorebook-parser.js';
 import { ChubImporter } from '../services/chub-importer.js';
+import { computeCharacterChecksum, computeLorebookChecksum } from '../services/checksum-service.js';
 import { IMAGE_EXTENSIONS } from '../../../shared/regex-patterns.js';
 import {
   cacheCharacterImages,
@@ -78,6 +79,7 @@ async function cacheCardImages(characterId, cardData, dataRoot, onProgress) {
 async function extractAndSaveEmbeddedLorebook(storageInstance, cardData, dataRoot, onProgress) {
   let embeddedLorebook = null;
   let lorebookId = null;
+  let createdLorebookId = null;
 
   if (
     cardData.data?.character_book &&
@@ -92,24 +94,51 @@ async function extractAndSaveEmbeddedLorebook(storageInstance, cardData, dataRoo
       lorebookData.name = `${cardData.data.name}'s Lorebook`;
       lorebookData.description = lorebookData.description || `Lorebook for ${cardData.data.name}`;
 
-      lorebookId = uuidv4();
+      // A world book shipped with several characters is the same world book
+      // every time, so link the existing one instead of importing another copy.
+      // The checksum covers entries and scan settings, not the name — the name
+      // above is derived from whichever character happened to carry it.
+      const contentChecksum = computeLorebookChecksum(lorebookData);
+      const existing = storageInstance.findExistingLorebookForImport(contentChecksum);
 
-      // Cache external images and rewrite URLs before saving, so the
-      // rewritten local paths are what gets persisted.
-      await cacheAndRewriteLorebookImages(lorebookId, lorebookData, dataRoot, onProgress);
+      if (existing) {
+        lorebookId = existing.id;
+        embeddedLorebook = {
+          id: existing.id,
+          name: existing.name,
+          entryCount: lorebookData.entries.length,
+          reused: true,
+        };
+        console.log(
+          `Reusing lorebook "${existing.name}" for ${cardData.data.name} (identical content)`,
+        );
+      } else {
+        lorebookId = uuidv4();
+        createdLorebookId = lorebookId;
 
-      // Save to global lorebook library
-      await storageInstance.saveLorebook(lorebookId, lorebookData);
+        // Cache external images and rewrite URLs before saving, so the
+        // rewritten local paths are what gets persisted.
+        await cacheAndRewriteLorebookImages(lorebookId, lorebookData, dataRoot, onProgress);
 
-      embeddedLorebook = {
-        id: lorebookId,
-        name: lorebookData.name,
-        entryCount: lorebookData.entries.length,
-      };
+        // Save to global lorebook library. The origin checksum is the book as
+        // the card carried it, so the next character shipping it matches even
+        // though image caching has since rewritten this copy's URLs.
+        lorebookData.name = storageInstance.resolveUniqueLorebookName(lorebookData.name);
+        await storageInstance.saveLorebook(lorebookId, lorebookData, {
+          originChecksum: contentChecksum,
+        });
 
-      console.log(
-        `Extracted embedded lorebook from ${cardData.data.name}: ${lorebookData.entries.length} entries`,
-      );
+        embeddedLorebook = {
+          id: lorebookId,
+          name: lorebookData.name,
+          entryCount: lorebookData.entries.length,
+          reused: false,
+        };
+
+        console.log(
+          `Extracted embedded lorebook from ${cardData.data.name}: ${lorebookData.entries.length} entries`,
+        );
+      }
     } catch (error) {
       console.error('Failed to parse embedded lorebook:', error);
     }
@@ -121,7 +150,88 @@ async function extractAndSaveEmbeddedLorebook(storageInstance, cardData, dataRoo
   }
   cardData.data.extensions.ursceal_lorebook_id = lorebookId;
 
-  return { embeddedLorebook, lorebookId };
+  return { embeddedLorebook, lorebookId, createdLorebookId };
+}
+
+/**
+ * Reject a card we have already imported.
+ *
+ * Matching is on the *origin* checksum — the source content, before local image
+ * URLs are rewritten — so a card matches the copy it was imported from
+ * regardless of what caching did to it afterwards.
+ *
+ * A stored copy the user has since edited does not block the import: they get a
+ * clean copy alongside their edited one. `import_internal_checksum` is frozen at
+ * import, so `current !== internal` is exactly "edited since import".
+ *
+ * Call this before downloading anything — a duplicate should cost nothing.
+ */
+function assertNotDuplicateCharacter(storageInstance, originChecksum) {
+  const matches = storageInstance.findCharactersByOriginChecksum(originChecksum);
+  const unmodified = matches.find((m) => m.current_checksum === m.import_internal_checksum);
+
+  if (unmodified) {
+    throw new AppError(`"${unmodified.name}" has already been imported from this card.`, 409, {
+      existingCharacterId: unmodified.id,
+      existingCharacterName: unmodified.name,
+    });
+  }
+}
+
+/**
+ * Roll back what a failed import already wrote: cached asset directories, and
+ * the lorebook row if this import is the one that created it.
+ *
+ * `createdLorebookId` is null when an existing lorebook was reused — deleting
+ * that one would take assets and entries still in use by other characters.
+ */
+async function cleanupFailedImport(storageInstance, dataRoot, characterId, createdLorebookId) {
+  try {
+    await new AssetManager(dataRoot).deleteDir(characterId);
+  } catch (error) {
+    console.error(`Failed to clean up assets for character ${characterId}:`, error);
+  }
+
+  if (!createdLorebookId) return;
+
+  try {
+    await storageInstance.deleteLorebook(createdLorebookId);
+    await new AssetManager(dataRoot, 'lorebooks').deleteDir(createdLorebookId);
+  } catch (error) {
+    console.error(`Failed to clean up lorebook ${createdLorebookId}:`, error);
+  }
+}
+
+/**
+ * The lorebook a character is about to strand, or null.
+ *
+ * Nothing is deleted here — the client asks the user, then calls
+ * DELETE /api/lorebooks/:id if they say yes. Deleting it outright would be
+ * inconsistent with this route refusing to delete a character that is still
+ * used by a story.
+ */
+async function findLorebookLeftBehindBy(characterId) {
+  let lorebookId;
+  try {
+    const cardData = await storage.getCharacter(characterId);
+    lorebookId = cardData.data?.extensions?.ursceal_lorebook_id;
+  } catch {
+    return null;
+  }
+  if (!lorebookId) return null;
+
+  // Characters link a lorebook through their card; stories attach lorebooks
+  // directly. Either one still using it means it is not orphaned.
+  const refs = storage.getLorebookReferences(lorebookId, characterId);
+  if (refs.characters.length > 0 || refs.stories.length > 0) return null;
+
+  try {
+    const lorebook = await storage.getLorebook(lorebookId);
+    return { id: lorebookId, name: lorebook.name };
+  } catch {
+    // Already gone.
+    return null;
+  }
 }
 
 // ==================== Global Character Library ====================
@@ -212,24 +322,31 @@ router.post(
     }
 
     const characterId = uuidv4();
+    let createdLorebookId = null;
 
     // Parse character card from PNG
     try {
       const cardData = await CharacterParser.parseCard(req.file.buffer);
 
+      // Before any network work: the card as it arrived, so a re-import of the
+      // same source matches however image caching later rewrites it.
+      const originChecksum = computeCharacterChecksum(cardData);
+      assertNotDuplicateCharacter(storage, originChecksum);
+
       // Cache external images and rewrite URLs
       await cacheCardImages(characterId, cardData, req.app.locals.dataRoot, channel.send);
 
       // Extract embedded lorebook if present
-      const { embeddedLorebook } = await extractAndSaveEmbeddedLorebook(
+      const { embeddedLorebook, createdLorebookId: created } = await extractAndSaveEmbeddedLorebook(
         storage,
         cardData,
         req.app.locals.dataRoot,
         channel.send,
       );
+      createdLorebookId = created;
 
       // Save character data as JSON and image separately
-      await storage.saveCharacter(characterId, cardData, req.file.buffer);
+      await storage.saveCharacter(characterId, cardData, req.file.buffer, { originChecksum });
 
       channel.finish({
         statusCode: 201,
@@ -243,13 +360,18 @@ router.post(
         },
       });
     } catch (error) {
+      await cleanupFailedImport(storage, req.app.locals.dataRoot, characterId, createdLorebookId);
       // Once the stream is open the status code is already sent, so the error
       // has to be delivered as an event instead of thrown.
-      if (channel.streaming) {
+      if (res.headersSent) {
         channel.fail(`Invalid character card: ${error.message}`);
         return;
       }
-      throw new AppError(`Invalid character card: ${error.message}`, 400);
+      // AppError already carries the right status and details (e.g. a 409 for a
+      // duplicate); only unexpected failures become a generic 400.
+      throw error instanceof AppError
+        ? error
+        : new AppError(`Invalid character card: ${error.message}`, 400);
     }
   }),
 );
@@ -405,21 +527,27 @@ router.post(
 
     const characterId = uuidv4();
     const channel = sseChannel(req, res);
+    let createdLorebookId = null;
 
     try {
+      // Before any network work — a duplicate should not cost a download.
+      const originChecksum = computeCharacterChecksum(cardData);
+      assertNotDuplicateCharacter(storage, originChecksum);
+
       // Cache external images and rewrite URLs
       await cacheCardImages(characterId, cardData, req.app.locals.dataRoot, channel.send);
 
       // Extract embedded lorebook if present
-      const { embeddedLorebook } = await extractAndSaveEmbeddedLorebook(
+      const { embeddedLorebook, createdLorebookId: created } = await extractAndSaveEmbeddedLorebook(
         storage,
         cardData,
         req.app.locals.dataRoot,
         channel.send,
       );
+      createdLorebookId = created;
 
       // Save character data (no image for JSON import)
-      await storage.saveCharacter(characterId, cardData, null);
+      await storage.saveCharacter(characterId, cardData, null, { originChecksum });
 
       channel.finish({
         statusCode: 201,
@@ -433,9 +561,10 @@ router.post(
         },
       });
     } catch (error) {
+      await cleanupFailedImport(storage, req.app.locals.dataRoot, characterId, createdLorebookId);
       // Once the stream is open the status line is already sent, so the failure
       // has to reach the client as an event rather than a status code.
-      if (channel.streaming) {
+      if (res.headersSent) {
         channel.fail(`Failed to import character: ${error.message}`);
         return;
       }
@@ -456,6 +585,8 @@ router.post(
     }
 
     const isImageUrl = IMAGE_EXTENSIONS.test(url);
+    const characterId = uuidv4();
+    let createdLorebookId = null;
 
     if (isImageUrl) {
       try {
@@ -467,25 +598,28 @@ router.post(
         const arrayBuffer = await response.arrayBuffer();
         const imageBuffer = Buffer.from(arrayBuffer);
 
-        const characterId = uuidv4();
-
         // Parse character card from PNG
         const rawCardData = await CharacterParser.parseCard(imageBuffer);
         const cardData = CharacterParser.normalizeCardData(rawCardData);
+
+        const originChecksum = computeCharacterChecksum(cardData);
+        assertNotDuplicateCharacter(storage, originChecksum);
 
         // Cache external images and rewrite URLs
         await cacheCardImages(characterId, cardData, req.app.locals.dataRoot, channel.send);
 
         // Extract embedded lorebook if present
-        const { embeddedLorebook } = await extractAndSaveEmbeddedLorebook(
-          storage,
-          cardData,
-          req.app.locals.dataRoot,
-          channel.send,
-        );
+        const { embeddedLorebook, createdLorebookId: created } =
+          await extractAndSaveEmbeddedLorebook(
+            storage,
+            cardData,
+            req.app.locals.dataRoot,
+            channel.send,
+          );
+        createdLorebookId = created;
 
         // Save character data as JSON and image separately
-        await storage.saveCharacter(characterId, cardData, imageBuffer);
+        await storage.saveCharacter(characterId, cardData, imageBuffer, { originChecksum });
 
         channel.finish({
           statusCode: 201,
@@ -500,11 +634,14 @@ router.post(
         });
         return;
       } catch (error) {
-        if (channel.streaming) {
+        await cleanupFailedImport(storage, req.app.locals.dataRoot, characterId, createdLorebookId);
+        if (res.headersSent) {
           channel.fail(`Failed to import image character: ${error.message}`);
           return;
         }
-        throw new AppError(`Failed to import image character: ${error.message}`, 400);
+        throw error instanceof AppError
+          ? error
+          : new AppError(`Failed to import image character: ${error.message}`, 400);
       }
     }
 
@@ -520,21 +657,23 @@ router.post(
       // Import character from CHUB
       const { characterData, imageBuffer } = await ChubImporter.importFromUrl(url);
 
-      const characterId = uuidv4();
+      const originChecksum = computeCharacterChecksum(characterData);
+      assertNotDuplicateCharacter(storage, originChecksum);
 
       // Cache external images and rewrite URLs
       await cacheCardImages(characterId, characterData, req.app.locals.dataRoot, channel.send);
 
       // Extract embedded lorebook if present
-      const { embeddedLorebook } = await extractAndSaveEmbeddedLorebook(
+      const { embeddedLorebook, createdLorebookId: created } = await extractAndSaveEmbeddedLorebook(
         storage,
         characterData,
         req.app.locals.dataRoot,
         channel.send,
       );
+      createdLorebookId = created;
 
       // Save character with image
-      await storage.saveCharacter(characterId, characterData, imageBuffer);
+      await storage.saveCharacter(characterId, characterData, imageBuffer, { originChecksum });
 
       const hasImage = await storage.hasCharacterImage(characterId);
 
@@ -550,11 +689,14 @@ router.post(
         },
       });
     } catch (error) {
-      if (channel.streaming) {
+      await cleanupFailedImport(storage, req.app.locals.dataRoot, characterId, createdLorebookId);
+      if (res.headersSent) {
         channel.fail(`Failed to import character: ${error.message}`);
         return;
       }
-      throw new AppError(`Failed to import character: ${error.message}`, 400);
+      throw error instanceof AppError
+        ? error
+        : new AppError(`Failed to import character: ${error.message}`, 400);
     }
   }),
 );
@@ -785,6 +927,10 @@ router.delete(
       );
     }
 
+    // Work out whether this character's lorebook is about to be left behind,
+    // before the character row (and its link) is gone.
+    const orphanedLorebook = await findLorebookLeftBehindBy(characterId);
+
     await storage.deleteCharacter(characterId);
 
     // Clean up cached asset files
@@ -795,7 +941,10 @@ router.delete(
       console.error(`Failed to clean up assets for character ${characterId}:`, error);
     }
 
-    res.json({ success: true });
+    res.json({
+      success: true,
+      ...(orphanedLorebook ? { orphanedLorebook } : {}),
+    });
   }),
 );
 

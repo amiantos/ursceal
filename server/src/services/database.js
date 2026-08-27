@@ -7,7 +7,7 @@ import Database from 'better-sqlite3';
 import path from 'path';
 import fs from 'fs';
 
-const SCHEMA_VERSION = 8;
+const SCHEMA_VERSION = 9;
 
 /**
  * Initialize the SQLite database with schema
@@ -114,11 +114,16 @@ function createAllTables(db) {
       thumbnail BLOB,
       thumbnail_medium BLOB,
       created TEXT NOT NULL,
-      modified TEXT NOT NULL
+      modified TEXT NOT NULL,
+      import_origin_checksum TEXT,
+      import_internal_checksum TEXT,
+      current_checksum TEXT
     );
 
     -- Create index for character name lookups
     CREATE INDEX IF NOT EXISTS idx_characters_name ON characters(name);
+    CREATE INDEX IF NOT EXISTS idx_characters_import_origin_checksum
+      ON characters(import_origin_checksum);
 
     -- Lorebooks table
     CREATE TABLE IF NOT EXISTS lorebooks (
@@ -130,8 +135,16 @@ function createAllTables(db) {
       recursive_scanning INTEGER DEFAULT 0,
       extensions TEXT DEFAULT '{}',
       created TEXT NOT NULL,
-      modified TEXT NOT NULL
+      modified TEXT NOT NULL,
+      import_origin_checksum TEXT,
+      import_internal_checksum TEXT,
+      current_checksum TEXT
     );
+
+    CREATE INDEX IF NOT EXISTS idx_lorebooks_import_origin_checksum
+      ON lorebooks(import_origin_checksum);
+    CREATE INDEX IF NOT EXISTS idx_lorebooks_current_checksum
+      ON lorebooks(current_checksum);
 
     -- Lorebook entries table
     CREATE TABLE IF NOT EXISTS lorebook_entries (
@@ -344,6 +357,27 @@ function migrateSchema(db, fromVersion) {
       db.exec('ALTER TABLE characters ADD COLUMN thumbnail_medium BLOB');
 
       console.log('Added thumbnail_medium column (backfill runs on startup)');
+    }
+
+    // Migration to version 9: Add checksum columns to characters and lorebooks
+    if (fromVersion < 9) {
+      console.log('Adding checksum columns to characters and lorebooks...');
+
+      for (const table of ['characters', 'lorebooks']) {
+        db.exec(`ALTER TABLE ${table} ADD COLUMN import_origin_checksum TEXT`);
+        db.exec(`ALTER TABLE ${table} ADD COLUMN import_internal_checksum TEXT`);
+        db.exec(`ALTER TABLE ${table} ADD COLUMN current_checksum TEXT`);
+        db.exec(
+          `CREATE INDEX IF NOT EXISTS idx_${table}_import_origin_checksum
+             ON ${table}(import_origin_checksum)`,
+        );
+      }
+      db.exec(
+        `CREATE INDEX IF NOT EXISTS idx_lorebooks_current_checksum
+           ON lorebooks(current_checksum)`,
+      );
+
+      console.log('Added checksum columns (backfill runs on startup)');
     }
 
     db.prepare('UPDATE schema_version SET version = ?').run(SCHEMA_VERSION);

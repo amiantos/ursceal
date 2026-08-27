@@ -9,6 +9,7 @@ import { asyncHandler, AppError } from '../middleware/error-handler.js';
 import { SqliteStorageService } from '../services/sqliteStorage.js';
 import { LorebookParser } from '../services/lorebook-parser.js';
 import { cacheAndRewriteLorebookImages } from '../services/image-cacher.js';
+import { computeLorebookChecksum } from '../services/checksum-service.js';
 import { AssetManager } from '../services/asset-manager.js';
 import { sseChannel } from '../utils/sse.js';
 
@@ -24,6 +25,41 @@ router.use((req, res, next) => {
   }
   next();
 });
+
+/**
+ * Reject a lorebook file we already hold, and give a fresh one a free name.
+ *
+ * Matching is on content — entries and scan settings — not the name, so
+ * re-importing an export under a different filename is still caught, and so is a
+ * file matching a lorebook that predates schema v9. A copy the user has edited
+ * since importing does not block a fresh import.
+ *
+ * Returns the name to save under. Call before downloading images: a duplicate
+ * should not cost a round of image caching.
+ */
+function resolveLorebookImport(lorebookData, originChecksum) {
+  const existing = storage.findExistingLorebookForImport(originChecksum);
+
+  if (existing) {
+    throw new AppError(`"${existing.name}" has already been imported from this file.`, 409, {
+      existingLorebookId: existing.id,
+      existingLorebookName: existing.name,
+    });
+  }
+
+  return storage.resolveUniqueLorebookName(lorebookData.name);
+}
+
+/**
+ * Remove a partially-imported lorebook's cached assets.
+ */
+async function cleanupLorebookAssets(dataRoot, lorebookId) {
+  try {
+    await new AssetManager(dataRoot, 'lorebooks').deleteDir(lorebookId);
+  } catch (error) {
+    console.error(`Failed to clean up assets for lorebook ${lorebookId}:`, error);
+  }
+}
 
 // ==================== Lorebook Library Operations ====================
 
@@ -103,13 +139,15 @@ router.post(
     }
 
     const channel = sseChannel(req, res);
+    const lorebookId = uuidv4();
 
     try {
       // Parse lorebook
       const parsed = LorebookParser.parseStandaloneLorebook(req.file.buffer);
 
-      // Generate unique ID
-      const lorebookId = uuidv4();
+      // The file as it arrived, before image URLs are rewritten to local paths.
+      const originChecksum = computeLorebookChecksum(parsed);
+      parsed.name = resolveLorebookImport(parsed, originChecksum);
 
       // Cache external images and rewrite URLs before saving, so the rewritten
       // local paths are what gets persisted.
@@ -121,7 +159,7 @@ router.post(
       );
 
       // Save to storage
-      await storage.saveLorebook(lorebookId, parsed);
+      await storage.saveLorebook(lorebookId, parsed, { originChecksum });
 
       channel.finish({
         statusCode: 200,
@@ -134,11 +172,14 @@ router.post(
       });
     } catch (error) {
       console.error('Failed to import lorebook:', error);
-      if (channel.streaming) {
+      await cleanupLorebookAssets(req.app.locals.dataRoot, lorebookId);
+      if (res.headersSent) {
         channel.fail(`Failed to import lorebook: ${error.message}`);
         return;
       }
-      throw new AppError(`Failed to import lorebook: ${error.message}`, 400);
+      throw error instanceof AppError
+        ? error
+        : new AppError(`Failed to import lorebook: ${error.message}`, 400);
     }
   }),
 );
@@ -155,6 +196,8 @@ router.post(
     if (!url || typeof url !== 'string') {
       throw new AppError('URL is required', 400);
     }
+
+    const lorebookId = uuidv4();
 
     try {
       // Fetch JSON from URL
@@ -175,8 +218,9 @@ router.post(
       // Parse lorebook
       const parsed = LorebookParser.parseStandaloneLorebook(buffer);
 
-      // Generate unique ID
-      const lorebookId = uuidv4();
+      // The file as it arrived, before image URLs are rewritten to local paths.
+      const originChecksum = computeLorebookChecksum(parsed);
+      parsed.name = resolveLorebookImport(parsed, originChecksum);
 
       // Cache external images and rewrite URLs before saving, so the rewritten
       // local paths are what gets persisted.
@@ -188,7 +232,7 @@ router.post(
       );
 
       // Save to storage
-      await storage.saveLorebook(lorebookId, parsed);
+      await storage.saveLorebook(lorebookId, parsed, { originChecksum });
 
       channel.finish({
         statusCode: 200,
@@ -201,11 +245,14 @@ router.post(
       });
     } catch (error) {
       console.error('Failed to import lorebook from URL:', error);
-      if (channel.streaming) {
+      await cleanupLorebookAssets(req.app.locals.dataRoot, lorebookId);
+      if (res.headersSent) {
         channel.fail(`Failed to import lorebook from URL: ${error.message}`);
         return;
       }
-      throw new AppError(`Failed to import lorebook from URL: ${error.message}`, 400);
+      throw error instanceof AppError
+        ? error
+        : new AppError(`Failed to import lorebook from URL: ${error.message}`, 400);
     }
   }),
 );
@@ -288,12 +335,7 @@ router.delete(
     await storage.deleteLorebook(lorebookId);
 
     // Clean up cached asset files so deleted lorebooks don't leak their gallery
-    try {
-      const assetManager = new AssetManager(req.app.locals.dataRoot, 'lorebooks');
-      await assetManager.deleteDir(lorebookId);
-    } catch (error) {
-      console.error(`Failed to clean up assets for lorebook ${lorebookId}:`, error);
-    }
+    await cleanupLorebookAssets(req.app.locals.dataRoot, lorebookId);
 
     res.json({ success: true });
   }),

@@ -4,6 +4,26 @@
 
 const baseURL = '/api';
 
+/**
+ * Build an Error from a JSON error body, carrying through any extra fields the
+ * server attached so callers can act on them — e.g. a 409 duplicate import
+ * naming the character it collided with.
+ *
+ * @param {object} body - Parsed JSON error body.
+ * @param {Response} response
+ * @returns {Error}
+ */
+function errorFromBody(body, response) {
+  const error = new Error(body.error || `Request failed: ${response.statusText}`);
+  error.status = response.status;
+  for (const [key, value] of Object.entries(body)) {
+    if (key !== 'error' && key !== 'message' && key !== 'stack') {
+      error[key] = value;
+    }
+  }
+  return error;
+}
+
 async function request(endpoint, options = {}) {
   const url = `${baseURL}${endpoint}`;
   const defaultOptions = {
@@ -15,8 +35,8 @@ async function request(endpoint, options = {}) {
   const response = await fetch(url, { ...defaultOptions, ...options });
 
   if (!response.ok) {
-    const error = await response.json().catch(() => ({ error: response.statusText }));
-    throw new Error(error.error || `Request failed: ${response.statusText}`);
+    const body = await response.json().catch(() => ({ error: response.statusText }));
+    throw errorFromBody(body, response);
   }
 
   return response.json();
@@ -40,7 +60,7 @@ async function requestWithProgress(endpoint, options = {}, onProgress) {
     const response = await fetch(url, { method: 'POST', ...options });
     if (!response.ok) {
       const error = await response.json().catch(() => ({ error: response.statusText }));
-      throw new Error(error.error || `Request failed: ${response.statusText}`);
+      throw errorFromBody(error, response);
     }
     return response.json();
   }
@@ -52,9 +72,11 @@ async function requestWithProgress(endpoint, options = {}, onProgress) {
   });
 
   // A failure before the stream opened still arrives as a normal error status.
+  // Duplicate imports are detected before any streaming starts, so they land
+  // here with their status and details intact.
   if (!response.ok) {
     const error = await response.json().catch(() => ({ error: response.statusText }));
-    throw new Error(error.error || `Request failed: ${response.statusText}`);
+    throw errorFromBody(error, response);
   }
 
   // The server only streams if it supports it on this route. If it answered
